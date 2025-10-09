@@ -191,8 +191,16 @@ class BusinessPlan(Base):
         }
 
 # Database setup
-def get_engine(db_path='data/tasks.db'):
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+def get_engine(db_path=None):
+    if db_path is None:
+        # Use environment variable or default to home directory
+        db_path = os.getenv('BUSINESS_AGENT_DB', os.path.expanduser('~/.business-agent/tasks.db'))
+
+    # Create directory if it doesn't exist
+    db_dir = os.path.dirname(db_path)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
     return create_engine(f'sqlite:///{db_path}', echo=False)
 
 def get_session(engine=None):
@@ -201,7 +209,7 @@ def get_session(engine=None):
     Session = sessionmaker(bind=engine)
     return Session()
 
-def init_database(db_path='data/tasks.db'):
+def init_database(db_path=None):
     """Initialize the database with all tables"""
     engine = get_engine(db_path)
     Base.metadata.create_all(engine)

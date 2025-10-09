@@ -54,3 +54,11 @@ Thumbs.db
 
 # Research data cache
 data/research_cache/
+
+# PyPI API tokens (security)
+.pypirc
+
+# Test database
+test.db
+*.db-shm
+*.db-wal
