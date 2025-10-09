@@ -1,0 +1,30 @@
+{
+  "name": "Business Agent",
+  "description": "AI-powered daily business execution assistant",
+  "version": "1.0.0",
+  "python": {
+    "version": "3.8+",
+    "venv": "venv"
+  },
+  "setup": [
+    "python3 -m venv venv",
+    "source venv/bin/activate",
+    "pip install -r requirements.txt",
+    "cp .env.example .env",
+    "python scripts/init_db.py"
+  ],
+  "commands": {
+    "setup": "bash setup.sh",
+    "morning": "python scripts/morning_brief.py",
+    "evening": "python scripts/evening_review.py",
+    "start": "python main.py",
+    "cli": "python scripts/agent_cli.py",
+    "test": "python -m pytest tests/ -v"
+  },
+  "documentation": [
+    "README.md",
+    "QUICKSTART.md",
+    "GETTING_STARTED.md",
+    "PROJECT_SUMMARY.md"
+  ]
+}
