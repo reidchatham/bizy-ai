@@ -158,8 +158,9 @@ class BusinessMetric(Base):
 
 class BusinessPlan(Base):
     __tablename__ = 'business_plans'
-    
+
     id = Column(Integer, primary_key=True)
+    name = Column(String(255))
     version = Column(String(50))
     vision = Column(Text)
     mission = Column(Text)
@@ -171,6 +172,7 @@ class BusinessPlan(Base):
     key_partnerships = Column(JSON)
     cost_structure = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
     
     def to_dict(self):

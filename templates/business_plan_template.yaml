@@ -1,6 +1,7 @@
 # Business Plan Template
 # Replace all [PLACEHOLDER] values with your actual business information
 
+name: "[YOUR BUSINESS NAME]"
 version: "1.0"
 created: "[YYYY-MM-DD]"
 

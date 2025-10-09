@@ -2,6 +2,8 @@
 """Business Agent CLI Tool"""
 
 import click
+import os
+import sys
 from agent.tasks import TaskManager
 from agent.planner import BusinessPlanner
 from agent.research import ResearchAgent
@@ -266,6 +268,17 @@ def update():
     """Update existing business plan"""
     from agent.plan_manager import update_business_plan
     update_business_plan()
+
+@plan.command()
+@click.argument('file_path', required=False)
+@click.option('--name', '-n', help='Business plan name')
+def load(file_path, name):
+    """Load business plan from YAML file"""
+    # Import and run the standalone script
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, repo_root)
+    from load_bizy_plan import load_business_plan
+    load_business_plan(file_path, name)
 
 if __name__ == "__main__":
     cli()
