@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='bizy-ai',
-    version='1.0.1',
+    version='1.0.2',
     description='AI-powered business planning and execution agent',
     author='Reid Chatham',
     packages=find_packages(),
