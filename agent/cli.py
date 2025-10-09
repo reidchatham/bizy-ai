@@ -243,5 +243,29 @@ def weekly():
     from agent.weekly_review import run_weekly_review
     run_weekly_review()
 
+# BUSINESS PLAN MANAGEMENT
+@cli.group()
+def plan():
+    """Manage business plan"""
+    pass
+
+@plan.command()
+def show():
+    """Review current business plan and goals"""
+    from agent.plan_manager import review_business_plan
+    review_business_plan()
+
+@plan.command()
+def create():
+    """Create new business plan"""
+    from agent.plan_manager import create_business_plan
+    create_business_plan()
+
+@plan.command()
+def update():
+    """Update existing business plan"""
+    from agent.plan_manager import update_business_plan
+    update_business_plan()
+
 if __name__ == "__main__":
     cli()
