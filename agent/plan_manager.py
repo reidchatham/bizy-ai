@@ -6,11 +6,13 @@ Review and update business plans, goals, and tasks
 
 import sys
 import os
+import yaml
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from agent.core import BusinessAgent
 from agent.planner import BusinessPlanner
 from agent.tasks import TaskManager
+from agent.models import get_session, BusinessPlan
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table

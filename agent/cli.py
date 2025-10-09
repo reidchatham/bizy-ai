@@ -277,7 +277,7 @@ def load(file_path, name):
     # Import and run the standalone script
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.insert(0, repo_root)
-    from load_bizy_plan import load_business_plan
+    from scripts.load_business_plan import load_business_plan
     load_business_plan(file_path, name)
 
 if __name__ == "__main__":

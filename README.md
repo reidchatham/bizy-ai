@@ -46,7 +46,7 @@ pip install -e .
 ./setup.sh
 ```
 
-See **[INSTALL.md](INSTALL.md)** for detailed installation options.
+See **[INSTALL.md](docs/INSTALL.md)** for detailed installation options.
 
 ---
 
