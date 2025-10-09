@@ -224,5 +224,24 @@ def stats():
     console.print(f"\n[bold]Today:[/bold] {len(today_tasks)} tasks scheduled\n")
     task_mgr.close()
 
+# DAILY/WEEKLY REVIEWS
+@cli.command()
+def brief():
+    """Generate morning briefing"""
+    from agent.morning_brief import run_morning_briefing
+    run_morning_briefing()
+
+@cli.command()
+def review():
+    """Generate evening review"""
+    from agent.evening_review import run_evening_review
+    run_evening_review()
+
+@cli.command()
+def weekly():
+    """Generate weekly review"""
+    from agent.weekly_review import run_weekly_review
+    run_weekly_review()
+
 if __name__ == "__main__":
     cli()
