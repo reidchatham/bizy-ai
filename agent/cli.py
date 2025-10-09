@@ -48,28 +48,66 @@ def add(title, description, priority, category, hours):
     task_mgr.close()
 
 @task.command()
-def list():
-    """List all pending tasks"""
+@click.option('--filter', '-f', type=click.Choice(['all', 'pending', 'completed', 'today']), default='today', help='Filter tasks')
+@click.option('--goal', '-g', type=int, help='Filter by goal ID')
+def list(filter, goal):
+    """List tasks with optional filters"""
     task_mgr = TaskManager()
-    tasks = task_mgr.get_tasks_for_today()
+
+    # Get tasks based on filter
+    if filter == 'all':
+        from agent.models import Task
+        if goal:
+            tasks = task_mgr.session.query(Task).filter_by(parent_goal_id=goal).all()
+        else:
+            tasks = task_mgr.session.query(Task).all()
+    elif filter == 'completed':
+        from agent.models import Task
+        query = task_mgr.session.query(Task).filter_by(status='completed')
+        if goal:
+            query = query.filter_by(parent_goal_id=goal)
+        tasks = query.all()
+    elif filter == 'pending':
+        from agent.models import Task
+        query = task_mgr.session.query(Task).filter(Task.status.in_(['pending', 'in_progress']))
+        if goal:
+            query = query.filter_by(parent_goal_id=goal)
+        tasks = query.all()
+    else:  # today
+        tasks = task_mgr.get_tasks_for_today()
 
     if not tasks:
-        console.print("[yellow]No pending tasks[/yellow]")
+        console.print(f"[yellow]No {filter} tasks found[/yellow]")
+        task_mgr.close()
         return
 
-    table = Table(title="📋 Your Tasks", show_header=True, header_style="bold cyan")
+    # Build title
+    title_parts = ["📋 Your Tasks"]
+    if filter != 'today':
+        title_parts.append(f"({filter.title()})")
+    if goal:
+        title_parts.append(f"for Goal #{goal}")
+
+    table = Table(title=" ".join(title_parts), show_header=True, header_style="bold cyan")
     table.add_column("ID", style="dim")
+    table.add_column("Status", justify="center")
     table.add_column("Priority", justify="center")
     table.add_column("Title")
     table.add_column("Category", style="cyan")
+    table.add_column("Due Date", style="dim")
 
     for task in tasks:
-        priority_str = "🔴" if task.priority == 1 else "🟡" if task.priority == 3 else "🟢"
+        status_icon = "✓" if task.status == 'completed' else "○"
+        priority_str = "🔴" if task.priority == 1 else "🟡" if task.priority == 2 else "🟢"
+        due_date = task.due_date.strftime('%Y-%m-%d') if task.due_date else "-"
+
         table.add_row(
             str(task.id),
+            status_icon,
             priority_str,
             task.title[:50],
-            task.category or "-"
+            task.category or "-",
+            due_date
         )
 
     console.print(table)
