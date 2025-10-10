@@ -233,18 +233,19 @@ class TaskManager:
         }
     
     def get_task_velocity(self, days=30):
-        """Calculate average tasks completed per day over a period"""
-        start_date = datetime.now() - timedelta(days=days)
+        """
+        Calculate average tasks completed per day over a period.
+        Uses actual completed_at timestamps for accurate velocity calculation.
+        """
+        # Get tasks completed in the specified period
+        completed_tasks = self.get_completed_tasks_this_week(days=days)
 
-        logs = self.session.query(DailyLog).filter(
-            DailyLog.date >= start_date
-        ).all()
+        if not completed_tasks:
+            return 0.0
 
-        if not logs:
-            return 0
-
-        total_completed = sum(log.tasks_completed for log in logs)
-        return total_completed / len(logs) if logs else 0
+        # Calculate velocity as tasks per day
+        velocity = len(completed_tasks) / days
+        return velocity
 
     def get_completed_tasks_this_week(self, days=7):
         """Get tasks completed in the last N days based on completed_at timestamp"""

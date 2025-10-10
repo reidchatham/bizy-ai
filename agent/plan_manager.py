@@ -123,7 +123,9 @@ GOALS PROGRESS:
 {goals_summary}
 
 EXECUTION METRICS:
-- Weekly Completion Rate: {weekly_stats['average_completion_rate']:.0%}
+- Tasks Completed This Week: {weekly_stats['tasks_completed_this_week']}
+- Tasks Created This Week: {weekly_stats['tasks_created_this_week']}
+- Completion Rate: {weekly_stats['completion_rate']:.1f}%
 - Tasks Overdue: {len(overdue)}
 
 Provide:
