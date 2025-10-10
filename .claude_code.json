@@ -1,7 +1,7 @@
 {
   "name": "Bizy AI",
   "description": "AI-powered business planning & execution agent with TDD workflow",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "python": {
     "version": "3.8+",
     "venv": "venv"
