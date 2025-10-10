@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.prompt import Prompt, Confirm
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -34,18 +35,110 @@ def task():
 @click.option('--priority', '-p', type=int, default=3)
 @click.option('--category', '-c', help='Task category')
 @click.option('--hours', '-h', type=float, help='Estimated hours')
-def add(title, description, priority, category, hours):
+@click.option('--goal', '-g', type=int, help='Goal ID to assign task to')
+def add(title, description, priority, category, hours, goal):
     """Add a new task"""
     task_mgr = TaskManager()
+    planner = BusinessPlanner()
+
+    goal_id = goal
+
+    # If no goal specified, prompt user to select or create one
+    if goal_id is None:
+        goals = planner.get_active_goals()
+
+        if goals:
+            console.print("\n[bold]📋 Available Goals:[/bold]")
+            goals_table = Table(show_header=True, header_style="bold cyan")
+            goals_table.add_column("ID", style="dim", width=6)
+            goals_table.add_column("Goal")
+            goals_table.add_column("Progress", justify="right", width=15)
+
+            for g in goals[:10]:  # Show max 10 goals
+                progress_bar = "█" * int(g.progress_percentage / 10) + "░" * (10 - int(g.progress_percentage / 10))
+                goals_table.add_row(
+                    str(g.id),
+                    g.title[:50],
+                    f"{progress_bar} {g.progress_percentage:.0f}%"
+                )
+            console.print(goals_table)
+
+            # Prompt user
+            console.print("\n[bold]Options:[/bold]")
+            console.print("  • Enter [cyan]goal ID[/cyan] to assign task to that goal")
+            console.print("  • Press [dim]Enter[/dim] to skip (create task without goal)")
+            console.print("  • Type [yellow]'new'[/yellow] to create a new goal")
+
+            choice = Prompt.ask("\n[bold]Your choice[/bold]", default="")
+
+            if choice.lower() == 'new':
+                # Create new goal interactively
+                console.print("\n[bold cyan]Creating New Goal[/bold cyan]")
+                goal_title = Prompt.ask("Goal title")
+                goal_horizon = Prompt.ask(
+                    "Horizon",
+                    choices=["daily", "weekly", "monthly", "quarterly", "yearly"],
+                    default="monthly"
+                )
+
+                try:
+                    new_goal = planner.create_goal(
+                        title=goal_title,
+                        horizon=goal_horizon
+                    )
+                    goal_id = new_goal.id
+                    console.print(f"[green]✓[/green] Created goal: {new_goal.title} (ID: {new_goal.id})\n")
+                except Exception as e:
+                    console.print(f"[red]✗[/red] Error creating goal: {e}")
+                    console.print("[yellow]Creating task without goal assignment[/yellow]\n")
+                    goal_id = None
+            elif choice and choice.isdigit():
+                goal_id = int(choice)
+                # Validate goal exists
+                goal_obj = planner.get_goal(goal_id)
+                if not goal_obj:
+                    console.print(f"[yellow]⚠[/yellow]  Goal #{goal_id} not found. Creating task without goal.\n")
+                    goal_id = None
+        else:
+            console.print("\n[yellow]No active goals found.[/yellow]")
+            if Confirm.ask("Would you like to create a new goal?", default=False):
+                console.print("\n[bold cyan]Creating New Goal[/bold cyan]")
+                goal_title = Prompt.ask("Goal title")
+                goal_horizon = Prompt.ask(
+                    "Horizon",
+                    choices=["daily", "weekly", "monthly", "quarterly", "yearly"],
+                    default="monthly"
+                )
+
+                try:
+                    new_goal = planner.create_goal(
+                        title=goal_title,
+                        horizon=goal_horizon
+                    )
+                    goal_id = new_goal.id
+                    console.print(f"[green]✓[/green] Created goal: {new_goal.title} (ID: {new_goal.id})\n")
+                except Exception as e:
+                    console.print(f"[red]✗[/red] Error creating goal: {e}\n")
+                    goal_id = None
+
+    # Create task with goal assignment
     task = task_mgr.create_task(
         title=title,
         description=description,
         priority=priority,
         category=category,
-        estimated_hours=hours
+        estimated_hours=hours,
+        parent_goal_id=goal_id
     )
+
     console.print(f"[green]✓[/green] Task created: {task.title} (ID: {task.id})")
+    if goal_id:
+        console.print(f"[dim]  Assigned to goal #{goal_id}[/dim]")
+        # Recalculate goal progress
+        planner.calculate_goal_progress(goal_id)
+
     task_mgr.close()
+    planner.close()
 
 @task.command()
 @click.option('--filter', '-f', type=click.Choice(['all', 'pending', 'completed', 'today']), default='all', help='Filter tasks')

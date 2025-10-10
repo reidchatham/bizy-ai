@@ -195,15 +195,28 @@ class BusinessPlan(Base):
 # Database setup
 def get_engine(db_path=None):
     if db_path is None:
-        # Use environment variable or default to home directory
-        db_path = os.getenv('BUSINESS_AGENT_DB', os.path.expanduser('~/.business-agent/tasks.db'))
+        # Determine database path based on environment
+        env = os.getenv('BIZY_ENV', 'production')
 
-    # Create directory if it doesn't exist
-    db_dir = os.path.dirname(db_path)
-    if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
+        if env == 'test':
+            # Test environment uses in-memory database (overridden by conftest.py)
+            return create_engine('sqlite:///:memory:', echo=False)
+        elif env == 'development':
+            # Development environment uses separate database
+            db_path = os.getenv('BUSINESS_AGENT_DB', os.path.expanduser('~/.business-agent/dev_tasks.db'))
+        else:  # production
+            # Production environment uses main database
+            db_path = os.getenv('BUSINESS_AGENT_DB', os.path.expanduser('~/.business-agent/tasks.db'))
 
-    return create_engine(f'sqlite:///{db_path}', echo=False)
+    # Create directory if it doesn't exist (not needed for in-memory)
+    if db_path and db_path != ':memory:':
+        db_dir = os.path.dirname(db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+        return create_engine(f'sqlite:///{db_path}', echo=False)
+
+    # In-memory database
+    return create_engine('sqlite:///:memory:', echo=False)
 
 def get_session(engine=None):
     if engine is None:

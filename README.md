@@ -50,6 +50,49 @@ See **[INSTALL.md](docs/INSTALL.md)** for detailed installation options.
 
 ---
 
+## Development
+
+### Test-Driven Development (TDD)
+
+This project follows TDD principles. All new features must:
+
+1. **Write tests first** - Define expected behavior
+2. **Run tests (they should fail)** - Red phase
+3. **Implement feature** - Green phase
+4. **Refactor** - Clean up code
+
+### Running Tests
+
+```bash
+# Run all tests with coverage
+make test
+
+# Run tests in watch mode
+make test-watch
+
+# Run specific test file
+pytest tests/test_tasks.py -v
+```
+
+### Database Environments
+
+- **Production**: `~/.business-agent/tasks.db` - Your actual business data 🔒
+- **Development**: `~/.business-agent/dev_tasks.db` - Safe for experimentation ⚙️
+- **Test**: In-memory - Isolated, clean for each test 🧪
+
+```bash
+# Use development database
+export BIZY_ENV=development
+make dev
+
+# Use production database (default)
+export BIZY_ENV=production
+```
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
+
+---
+
 ## Features (Phase 1)
 
 ✅ **AI-Powered Goal Breakdown** - Claude breaks big goals into 5-10 actionable tasks  
