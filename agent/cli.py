@@ -48,7 +48,7 @@ def add(title, description, priority, category, hours):
     task_mgr.close()
 
 @task.command()
-@click.option('--filter', '-f', type=click.Choice(['all', 'pending', 'completed', 'today']), default='today', help='Filter tasks')
+@click.option('--filter', '-f', type=click.Choice(['all', 'pending', 'completed', 'today']), default='all', help='Filter tasks')
 @click.option('--goal', '-g', type=int, help='Filter by goal ID')
 def list(filter, goal):
     """List tasks with optional filters"""
@@ -83,7 +83,7 @@ def list(filter, goal):
 
     # Build title
     title_parts = ["📋 Your Tasks"]
-    if filter != 'today':
+    if filter != 'all':
         title_parts.append(f"({filter.title()})")
     if goal:
         title_parts.append(f"for Goal #{goal}")
@@ -121,6 +121,14 @@ def complete(task_id):
     task = task_mgr.complete_task(task_id)
     if task:
         console.print(f"[green]✓[/green] Completed: {task.title}")
+
+        # Update goal progress if task is associated with a goal
+        if task.parent_goal_id:
+            from agent.planner import BusinessPlanner
+            planner = BusinessPlanner()
+            progress = planner.calculate_goal_progress(task.parent_goal_id)
+            console.print(f"[dim]Goal progress updated: {progress:.1f}%[/dim]")
+            planner.close()
     else:
         console.print(f"[red]✗[/red] Task {task_id} not found")
     task_mgr.close()
@@ -160,7 +168,15 @@ def list():
 
     if not goals:
         console.print("[yellow]No active goals[/yellow]")
+        planner.close()
         return
+
+    # Recalculate progress for all goals
+    for goal in goals:
+        planner.calculate_goal_progress(goal.id)
+
+    # Refresh goals after recalculation
+    goals = planner.get_active_goals()
 
     table = Table(title="🎯 Your Goals", show_header=True, header_style="bold cyan")
     table.add_column("ID", style="dim")

@@ -66,6 +66,13 @@ def review_business_plan():
         console.print("\n[bold]🎯 Goals Overview[/bold]\n")
         all_goals = planner.get_active_goals()
 
+        # Recalculate progress for all goals
+        for goal in all_goals:
+            planner.calculate_goal_progress(goal.id)
+
+        # Refresh goals after recalculation
+        all_goals = planner.get_active_goals()
+
         if all_goals:
             goals_table = Table(show_header=True, header_style="bold cyan")
             goals_table.add_column("Horizon")
