@@ -96,11 +96,11 @@ def review_business_plan():
 
         # Get task summary
         console.print("\n[bold]📋 Task Summary[/bold]\n")
-        weekly_stats = task_mgr.get_weekly_stats()
+        weekly_stats = task_mgr.get_weekly_task_stats()
         today_tasks = task_mgr.get_tasks_for_today()
         overdue = task_mgr.get_overdue_tasks()
 
-        console.print(f"  • This Week: {weekly_stats['total_tasks_completed']}/{weekly_stats['total_tasks_planned']} completed ({weekly_stats['average_completion_rate']:.0%})")
+        console.print(f"  • This Week: {weekly_stats['tasks_completed_this_week']} completed ({weekly_stats['completion_rate']:.1f}% completion rate)")
         console.print(f"  • Today: {len(today_tasks)} tasks scheduled")
         console.print(f"  • Overdue: {len(overdue)} tasks")
 

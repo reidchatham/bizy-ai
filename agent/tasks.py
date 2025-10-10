@@ -235,17 +235,101 @@ class TaskManager:
     def get_task_velocity(self, days=30):
         """Calculate average tasks completed per day over a period"""
         start_date = datetime.now() - timedelta(days=days)
-        
+
         logs = self.session.query(DailyLog).filter(
             DailyLog.date >= start_date
         ).all()
-        
+
         if not logs:
             return 0
-        
+
         total_completed = sum(log.tasks_completed for log in logs)
         return total_completed / len(logs) if logs else 0
-    
+
+    def get_completed_tasks_this_week(self, days=7):
+        """Get tasks completed in the last N days based on completed_at timestamp"""
+        # Use UTC time to match database timestamps
+        now = datetime.utcnow()
+        start_date = now - timedelta(days=days)
+
+        completed_tasks = self.session.query(Task).filter(
+            and_(
+                Task.status == 'completed',
+                Task.completed_at >= start_date,
+                Task.completed_at <= now
+            )
+        ).order_by(Task.completed_at.desc()).all()
+
+        return completed_tasks
+
+    def get_created_tasks_this_week(self, days=7):
+        """Get tasks created in the last N days based on created_at timestamp"""
+        # Use UTC time to match database timestamps
+        now = datetime.utcnow()
+        start_date = now - timedelta(days=days)
+
+        created_tasks = self.session.query(Task).filter(
+            and_(
+                Task.created_at >= start_date,
+                Task.created_at <= now
+            )
+        ).order_by(Task.created_at.desc()).all()
+
+        return created_tasks
+
+    def get_weekly_task_stats(self, days=7):
+        """
+        Get weekly statistics based on actual task completion dates (completed_at).
+        This is more accurate than DailyLog-based stats as it reflects actual work completed.
+        """
+        completed_tasks = self.get_completed_tasks_this_week(days)
+        created_tasks = self.get_created_tasks_this_week(days)
+
+        # Calculate statistics
+        tasks_completed = len(completed_tasks)
+        tasks_created = len(created_tasks)
+
+        # Calculate completion rate (completed vs created this week)
+        completion_rate = (tasks_completed / tasks_created * 100) if tasks_created > 0 else 0
+
+        # Calculate total estimated hours
+        total_estimated_hours = sum(
+            task.estimated_hours or 0 for task in completed_tasks
+        )
+
+        # Calculate total actual hours
+        total_actual_hours = sum(
+            task.actual_hours or 0 for task in completed_tasks
+        )
+
+        # Break down by category
+        categories = {}
+        for task in completed_tasks:
+            category = task.category or 'uncategorized'
+            if category not in categories:
+                categories[category] = 0
+            categories[category] += 1
+
+        # Break down by priority
+        priorities = {}
+        for task in completed_tasks:
+            priority = task.priority
+            if priority not in priorities:
+                priorities[priority] = 0
+            priorities[priority] += 1
+
+        return {
+            'tasks_completed_this_week': tasks_completed,
+            'tasks_created_this_week': tasks_created,
+            'completion_rate': completion_rate,
+            'total_estimated_hours': total_estimated_hours,
+            'total_actual_hours': total_actual_hours,
+            'completed_tasks': [task.to_dict() for task in completed_tasks],
+            'categories': categories,
+            'priorities': priorities,
+            'period_days': days
+        }
+
     def close(self):
         """Close the database session"""
         self.session.close()

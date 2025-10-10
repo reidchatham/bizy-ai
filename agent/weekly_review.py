@@ -25,22 +25,22 @@ def run_weekly_review():
         task_mgr = TaskManager()
         planner = BusinessPlanner()
         
-        # Get weekly statistics
-        weekly_stats = task_mgr.get_weekly_stats()
-        
+        # Get weekly statistics based on actual task completions
+        weekly_stats = task_mgr.get_weekly_task_stats()
+
         # Get goal progress
         active_goals = planner.get_active_goals()
         goals_progress = "\n".join([
             f"- {g.title}: {g.progress_percentage:.0f}% complete"
             for g in active_goals[:5]
         ]) if active_goals else "No active goals"
-        
-        # Get key events
-        key_events = []
-        for log in weekly_stats.get('logs', []):
-            if log.get('wins'):
-                key_events.append(f"Win: {log['wins']}")
-        key_events_str = "\n".join(key_events[-10:]) if key_events else "No events logged"
+
+        # Get key events from completed tasks
+        completed_tasks = weekly_stats.get('completed_tasks', [])
+        key_events_str = "\n".join([
+            f"✓ {task['title']}" + (f" ({task['category']})" if task['category'] else "")
+            for task in completed_tasks[:10]
+        ]) if completed_tasks else "No tasks completed this week"
         
         # Generate review
         console.print("[dim]Generating comprehensive analysis...[/dim]\n")

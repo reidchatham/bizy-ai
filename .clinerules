@@ -1,0 +1,236 @@
+# Bizy AI Development Rules for Claude Code
+
+## Test-Driven Development (TDD) Workflow
+
+**CRITICAL: All new features and bug fixes MUST follow TDD principles.**
+
+### TDD Process (Red-Green-Refactor)
+
+1. **🔴 RED Phase - Write Failing Tests First**
+   - Before writing any implementation code, write a test that fails
+   - Tests should be in the `tests/` directory
+   - Use descriptive test names that explain what is being tested
+   - Test one behavior per test function
+
+2. **🟢 GREEN Phase - Make Tests Pass**
+   - Write minimal code to make the test pass
+   - Focus on functionality, not perfection
+   - Run tests frequently: `make test`
+
+3. **🔵 REFACTOR Phase - Improve Code Quality**
+   - Clean up code while keeping tests passing
+   - Improve readability, remove duplication
+   - Run tests after each change to ensure nothing breaks
+
+### Example TDD Workflow
+
+```bash
+# 1. Write failing test
+vim tests/test_feature.py
+
+# 2. Run test (should fail)
+make test
+
+# 3. Implement feature
+vim agent/feature.py
+
+# 4. Run test (should pass)
+make test
+
+# 5. Refactor if needed
+vim agent/feature.py
+
+# 6. Verify tests still pass
+make test
+
+# 7. Commit
+git add . && git commit -m "feat: Add feature with tests"
+```
+
+## Database Environments
+
+**NEVER directly edit the production database!**
+
+- **Test**: `:memory:` - Clean slate for each test (automatic in pytest)
+- **Development**: `~/.business-agent/dev_tasks.db` - Safe for experimentation
+- **Production**: `~/.business-agent/tasks.db` - ONLY for user's actual business data
+
+### Switching Environments
+
+```bash
+# Test (automatic in pytest)
+export BIZY_ENV=test
+
+# Development (for feature testing)
+export BIZY_ENV=development
+make dev
+
+# Production (default, use with caution)
+export BIZY_ENV=production
+```
+
+### Database Access Rules
+
+✅ **DO**:
+- Use development database for testing features
+- Write tests before implementing features
+- Run `make test` before committing
+- Use the Bizy CLI for database operations
+- All DB changes go through TaskManager, BusinessPlanner, etc.
+
+❌ **DON'T**:
+- Never directly edit production database
+- Never commit code without tests
+- Never skip running tests before pushing
+- Never write raw SQL queries directly
+
+## Testing Guidelines
+
+### Test Structure
+
+```python
+class TestFeature:
+    """Test Feature functionality"""
+
+    def test_basic_behavior(self, test_session):
+        """Test that feature does X correctly"""
+        # Arrange
+        manager = Manager()
+        manager.session = test_session
+
+        # Act
+        result = manager.do_something()
+
+        # Assert
+        assert result == expected_value
+```
+
+### Using Fixtures
+
+Available fixtures in `tests/conftest.py`:
+- `test_engine` - In-memory database engine
+- `test_session` - Isolated database session
+- `sample_goal` - Pre-created test goal
+- `sample_task` - Pre-created test task
+- `sample_business_plan` - Pre-created business plan
+- `multiple_tasks` - Collection of tasks with different statuses
+
+### Mocking AI Calls
+
+Always mock Anthropic API calls in tests:
+
+```python
+from unittest.mock import Mock, patch
+
+@patch('agent.planner.anthropic.Anthropic')
+def test_ai_feature(mock_anthropic, test_session):
+    """Mock AI API to avoid actual calls"""
+    mock_response = Mock()
+    mock_response.content = [Mock(text='{"result": "test"}')]
+    mock_anthropic.return_value.messages.create.return_value = mock_response
+
+    # Test your feature
+    result = your_ai_function()
+    assert result is not None
+```
+
+## Code Style
+
+- Use Black for formatting: `make lint`
+- Follow PEP 8 conventions
+- Write docstrings for public functions
+- Use type hints where appropriate
+- Keep functions focused and small
+
+## Git Workflow
+
+### Commit Message Format
+
+```
+<type>: <subject>
+
+<body>
+
+<footer>
+```
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `test`: Adding tests
+- `docs`: Documentation changes
+- `refactor`: Code refactoring
+- `style`: Formatting changes
+- `chore`: Maintenance tasks
+
+### Example Commit
+
+```
+feat: Add completed_at-based weekly stats
+
+- Added get_weekly_task_stats() method to TaskManager
+- Uses actual task completion dates instead of daily logs
+- Updated weekly review and CLI stats command
+- Added comprehensive tests for new functionality
+
+Closes #42
+```
+
+## Common Commands
+
+```bash
+# Run all tests with coverage
+make test
+
+# Run tests in watch mode
+make test-watch
+
+# Run specific test file
+pytest tests/test_tasks.py -v
+
+# Format code
+make lint
+
+# Set up development environment
+make dev
+
+# Clean up temporary files
+make clean
+
+# Install dev dependencies
+make install-dev
+```
+
+## When Working on Features
+
+1. **Always write tests first** (TDD!)
+2. **Use development database** (`export BIZY_ENV=development`)
+3. **Run tests frequently** (`make test`)
+4. **Check code formatting** (`make lint`)
+5. **Commit with clear messages**
+6. **Update documentation** if needed
+
+## Claude Code Integration
+
+This project is configured for Claude Code development:
+
+- `.claude_code.json` - Workspace configuration
+- `CONTRIBUTING.md` - Detailed development guidelines
+- `Makefile` - Quick development commands
+- `tests/` - Comprehensive test suite
+
+## Important Reminders
+
+- 🧪 **Tests come first** - Write failing test before implementation
+- 🛡️ **Protect production** - Never touch production DB during development
+- ✅ **Always verify** - Run full test suite before committing
+- 📝 **Document changes** - Update docs when adding features
+- 🔄 **Follow TDD** - Red → Green → Refactor → Repeat
+
+## Questions?
+
+Refer to:
+- `CONTRIBUTING.md` - Full development guide
+- `README.md` - Project overview and setup
+- `tests/` - Examples of well-written tests
+- `Makefile` - Available commands
