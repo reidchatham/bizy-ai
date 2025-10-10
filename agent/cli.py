@@ -362,23 +362,36 @@ def stats():
     """Show statistics"""
     task_mgr = TaskManager()
     weekly_stats = task_mgr.get_weekly_task_stats()
+    today_summary = task_mgr.get_daily_summary()
+    yesterday_summary = task_mgr.get_yesterday_summary()
     velocity = task_mgr.get_task_velocity()
     today_tasks = task_mgr.get_tasks_for_today()
 
     console.print("\n[bold cyan]📊 Your Statistics[/bold cyan]\n")
-    console.print("[bold]This Week:[/bold]")
+
+    # Today's stats
+    console.print("[bold]Today:[/bold]")
+    console.print(f"  • Tasks Completed: {today_summary['tasks_completed']}")
+    console.print(f"  • Tasks Scheduled: {len(today_tasks)}")
+
+    # Yesterday's stats
+    console.print(f"\n[bold]Yesterday:[/bold]")
+    console.print(f"  • Tasks Completed: {yesterday_summary['tasks_completed']}")
+
+    # Weekly stats
+    console.print(f"\n[bold]This Week:[/bold]")
     console.print(f"  • Tasks Completed: {weekly_stats['tasks_completed_this_week']}")
     console.print(f"  • Tasks Created: {weekly_stats['tasks_created_this_week']}")
     console.print(f"  • Completion Rate: {weekly_stats['completion_rate']:.1f}%")
     console.print(f"  • Total Hours (Estimated): {weekly_stats['total_estimated_hours']:.1f}h")
     if weekly_stats['total_actual_hours'] > 0:
         console.print(f"  • Total Hours (Actual): {weekly_stats['total_actual_hours']:.1f}h")
-    console.print(f"\n[bold]Velocity:[/bold] {velocity:.1f} tasks/day")
-    console.print(f"\n[bold]Today:[/bold] {len(today_tasks)} tasks scheduled\n")
+
+    console.print(f"\n[bold]Velocity:[/bold] {velocity:.1f} tasks/day\n")
 
     # Show breakdown by category if available
     if weekly_stats['categories']:
-        console.print("[bold]By Category:[/bold]")
+        console.print("[bold]By Category (This Week):[/bold]")
         for category, count in sorted(weekly_stats['categories'].items(), key=lambda x: x[1], reverse=True):
             console.print(f"  • {category}: {count} task(s)")
         console.print()

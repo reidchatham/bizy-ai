@@ -118,37 +118,58 @@ class TaskManager:
         ).order_by(Task.due_date, Task.priority).all()
     
     def get_daily_summary(self, date_obj=None):
-        """Get summary of tasks for a specific day"""
+        """
+        Get summary of tasks for a specific day.
+        Shows tasks completed on this day regardless of due date.
+        """
         if date_obj is None:
             date_obj = datetime.now()
-        
+
         if isinstance(date_obj, date) and not isinstance(date_obj, datetime):
             date_obj = datetime.combine(date_obj, datetime.min.time())
-        
-        day_start = date_obj.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        
+
+        # Use UTC time to match database timestamps
+        day_start_utc = date_obj.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end_utc = day_start_utc + timedelta(days=1)
+
+        # Convert to UTC for database query (since completed_at is stored in UTC)
+        # Get offset between local and UTC
+        local_now = datetime.now()
+        utc_now = datetime.utcnow()
+        utc_offset = utc_now - local_now
+
+        day_start_utc = day_start_utc + utc_offset
+        day_end_utc = day_end_utc + utc_offset
+
         # Get tasks due on this day
         tasks_due = self.session.query(Task).filter(
             and_(
-                Task.due_date >= day_start,
-                Task.due_date < day_end
+                Task.due_date >= day_start_utc,
+                Task.due_date < day_end_utc
             )
         ).all()
-        
-        # Get tasks completed on this day
+
+        # Get tasks completed on this day (using UTC timestamps)
         tasks_completed = self.session.query(Task).filter(
             and_(
-                Task.completed_at >= day_start,
-                Task.completed_at < day_end
+                Task.completed_at >= day_start_utc,
+                Task.completed_at < day_end_utc
             )
         ).all()
-        
+
+        # Calculate completion rate based on tasks that were due
+        # If no tasks were due, show N/A but still show completed count
+        if tasks_due:
+            completed_count = len([t for t in tasks_due if t.status == 'completed'])
+            completion_rate = completed_count / len(tasks_due)
+        else:
+            completion_rate = 0
+
         return {
             'date': date_obj.strftime('%Y-%m-%d'),
             'tasks_due': len(tasks_due),
-            'tasks_completed': len(tasks_completed),
-            'completion_rate': len(tasks_completed) / len(tasks_due) if tasks_due else 0,
+            'tasks_completed': len(tasks_completed),  # All tasks completed today
+            'completion_rate': completion_rate,  # Based on tasks that were due
             'completed_tasks': [t.to_dict() for t in tasks_completed],
             'pending_tasks': [t.to_dict() for t in tasks_due if t.status != 'completed']
         }

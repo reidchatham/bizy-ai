@@ -203,3 +203,65 @@ class TestTaskManager:
         assert stats['tasks_created_this_week'] == 0
         assert stats['completion_rate'] == 0
         assert len(stats['completed_tasks']) == 0
+
+    def test_get_daily_summary_today(self, test_session):
+        """Test getting summary for today's completed tasks"""
+        task_mgr = TaskManager()
+        task_mgr.session = test_session
+
+        # Complete 3 tasks today
+        for i in range(3):
+            task = task_mgr.create_task(title=f"Today Task {i+1}")
+            task_mgr.complete_task(task.id)
+
+        # Get today's summary
+        summary = task_mgr.get_daily_summary()
+
+        # Should show 3 tasks completed today
+        assert summary['tasks_completed'] == 3
+        assert len(summary['completed_tasks']) == 3
+
+    def test_get_daily_summary_yesterday(self, test_session):
+        """Test getting summary for yesterday's completed tasks"""
+        task_mgr = TaskManager()
+        task_mgr.session = test_session
+
+        # Create tasks completed yesterday
+        from agent.models import Task
+        yesterday = datetime.now() - timedelta(days=1)
+
+        for i in range(2):
+            task = Task(title=f"Yesterday Task {i+1}", status="completed")
+            task.completed_at = yesterday
+            test_session.add(task)
+        test_session.commit()
+
+        # Get yesterday's summary
+        summary = task_mgr.get_yesterday_summary()
+
+        # Should show 2 tasks completed yesterday
+        assert summary['tasks_completed'] == 2
+        assert len(summary['completed_tasks']) == 2
+
+    def test_get_daily_summary_with_due_date(self, test_session):
+        """Test daily summary shows tasks completed vs tasks due"""
+        task_mgr = TaskManager()
+        task_mgr.session = test_session
+
+        today = datetime.now()
+
+        # Create 5 tasks due today
+        for i in range(5):
+            task_mgr.create_task(title=f"Due Today {i+1}", due_date=today)
+
+        # Complete 3 of them
+        tasks = task_mgr.get_tasks_for_today()
+        for task in tasks[:3]:
+            task_mgr.complete_task(task.id)
+
+        # Get today's summary
+        summary = task_mgr.get_daily_summary()
+
+        assert summary['tasks_due'] == 5
+        assert summary['tasks_completed'] == 3
+        assert summary['completion_rate'] == 0.6  # 3/5
