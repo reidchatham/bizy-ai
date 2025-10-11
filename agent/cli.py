@@ -364,7 +364,7 @@ def stats():
     weekly_stats = task_mgr.get_weekly_task_stats()
     today_summary = task_mgr.get_daily_summary()
     yesterday_summary = task_mgr.get_yesterday_summary()
-    velocity = task_mgr.get_task_velocity()
+    velocity = task_mgr.get_task_velocity(days=7)  # Use 7-day velocity to match weekly context
     today_tasks = task_mgr.get_tasks_for_today()
 
     console.print("\n[bold cyan]📊 Your Statistics[/bold cyan]\n")
