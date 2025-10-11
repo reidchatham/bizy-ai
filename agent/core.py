@@ -127,10 +127,10 @@ Be supportive but honest. Keep it concise."""
 WEEK ENDING: {datetime.now().strftime('%B %d, %Y')}
 
 STATS:
-- Total Tasks Completed: {weekly_stats.get('total_tasks_completed', 0)}
-- Total Tasks Planned: {weekly_stats.get('total_tasks_planned', 0)}
-- Average Completion Rate: {weekly_stats.get('average_completion_rate', 0):.0%}
-- Days Logged: {weekly_stats.get('days_logged', 0)}
+- Total Tasks Completed: {weekly_stats.get('tasks_completed_this_week', 0)}
+- Total Tasks Created: {weekly_stats.get('tasks_created_this_week', 0)}
+- Completion Rate: {weekly_stats.get('completion_rate', 0):.1f}%
+- Total Hours (Estimated): {weekly_stats.get('total_estimated_hours', 0):.1f}h
 
 GOAL PROGRESS:
 {goals_progress}
