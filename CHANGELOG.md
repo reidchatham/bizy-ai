@@ -5,6 +5,26 @@ All notable changes to Bizy AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-10-11
+
+### Fixed
+- **Timestamp Consistency** - Standardized ALL timestamps on LOCAL time (was mixing UTC/local)
+  - Fixed `created_at` default in models.py to use `datetime.now()` instead of `datetime.utcnow()`
+  - Fixed query methods to use LOCAL time consistently
+  - Removed incorrect UTC offset calculation in `get_daily_summary()`
+  - Tasks now accurately appear on correct days in all reports
+- **Weekly Review Stats** - Fixed 0% progress display in `bizy weekly`
+  - Updated AI prompt to use correct key names from `get_weekly_task_stats()`
+  - Weekly review now shows accurate completion rates and task counts
+- **Velocity Consistency** - `bizy stats` now uses 7-day velocity (was 30-day)
+  - Matches `bizy weekly` calculation for consistent reporting
+
+### Added
+- **Edge Case Tests** - 3 new tests for timestamp boundary conditions
+  - Early morning task completion (5 AM)
+  - Late night task completion (11:30 PM)
+  - LOCAL time consistency verification
+
 ## [1.1.0] - 2025-10-10
 
 ### Added
@@ -48,5 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SQLite database
 - Automated scheduling
 
+[1.1.1]: https://github.com/reidchatham/bizy-ai/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/reidchatham/bizy-ai/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/reidchatham/bizy-ai/releases/tag/v1.0.2
