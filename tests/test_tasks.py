@@ -265,3 +265,81 @@ class TestTaskManager:
         assert summary['tasks_due'] == 5
         assert summary['tasks_completed'] == 3
         assert summary['completion_rate'] == 0.6  # 3/5
+
+    def test_timestamps_use_local_time(self, test_session):
+        """Test that both created_at and completed_at use LOCAL time consistently"""
+        from agent.models import Task
+        import time
+
+        task_mgr = TaskManager()
+        task_mgr.session = test_session
+
+        # Record current times
+        before_local = datetime.now()
+        time.sleep(0.01)  # Small delay
+
+        # Create and complete a task
+        task = task_mgr.create_task(title="Timestamp Test Task")
+        task_id = task.id
+        task_mgr.complete_task(task_id)
+
+        time.sleep(0.01)
+        after_local = datetime.now()
+
+        # Refresh to get latest data
+        test_session.refresh(task)
+
+        # Both timestamps should be in local time (between before and after)
+        assert before_local <= task.created_at <= after_local, \
+            f"created_at {task.created_at} not in range [{before_local}, {after_local}]"
+        assert before_local <= task.completed_at <= after_local, \
+            f"completed_at {task.completed_at} not in range [{before_local}, {after_local}]"
+
+        # Timestamps should NOT be 7 hours apart (which would indicate UTC vs local mix)
+        time_diff = abs((task.created_at - task.completed_at).total_seconds())
+        assert time_diff < 60, \
+            f"created_at and completed_at differ by {time_diff}s - possible UTC/local mix"
+
+    def test_daily_summary_early_morning(self, test_session):
+        """Test daily summary works for tasks completed early morning (before 7 AM)"""
+        from agent.models import Task
+
+        task_mgr = TaskManager()
+        task_mgr.session = test_session
+
+        # Create a task completed at 5 AM today
+        today = datetime.now().replace(hour=5, minute=0, second=0, microsecond=0)
+        task = Task(title="Early Morning Task", status="completed")
+        task.completed_at = today
+        task.created_at = today - timedelta(hours=1)
+        test_session.add(task)
+        test_session.commit()
+
+        # Get today's summary
+        summary = task_mgr.get_daily_summary(today)
+
+        # Should include the 5 AM task
+        assert summary['tasks_completed'] >= 1, \
+            "Early morning task (5 AM) should be included in today's summary"
+
+    def test_daily_summary_late_night(self, test_session):
+        """Test daily summary works for tasks completed late at night (after 11 PM)"""
+        from agent.models import Task
+
+        task_mgr = TaskManager()
+        task_mgr.session = test_session
+
+        # Create a task completed at 11:30 PM today
+        today = datetime.now().replace(hour=23, minute=30, second=0, microsecond=0)
+        task = Task(title="Late Night Task", status="completed")
+        task.completed_at = today
+        task.created_at = today - timedelta(hours=1)
+        test_session.add(task)
+        test_session.commit()
+
+        # Get today's summary
+        summary = task_mgr.get_daily_summary(today)
+
+        # Should include the 11:30 PM task
+        assert summary['tasks_completed'] >= 1, \
+            "Late night task (11:30 PM) should be included in today's summary"

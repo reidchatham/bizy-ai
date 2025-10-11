@@ -18,8 +18,8 @@ class Task(Base):
     estimated_hours = Column(Float)
     actual_hours = Column(Float)
     due_date = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now)  # LOCAL time for consistency
+    completed_at = Column(DateTime)  # LOCAL time, set by complete_task()
     parent_goal_id = Column(Integer)  # Links to goals
     dependencies = Column(JSON)  # List of task IDs this depends on
     notes = Column(Text)

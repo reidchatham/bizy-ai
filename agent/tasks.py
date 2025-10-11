@@ -121,6 +121,7 @@ class TaskManager:
         """
         Get summary of tasks for a specific day.
         Shows tasks completed on this day regardless of due date.
+        All timestamps are in LOCAL time.
         """
         if date_obj is None:
             date_obj = datetime.now()
@@ -128,32 +129,23 @@ class TaskManager:
         if isinstance(date_obj, date) and not isinstance(date_obj, datetime):
             date_obj = datetime.combine(date_obj, datetime.min.time())
 
-        # Use UTC time to match database timestamps
-        day_start_utc = date_obj.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end_utc = day_start_utc + timedelta(days=1)
-
-        # Convert to UTC for database query (since completed_at is stored in UTC)
-        # Get offset between local and UTC
-        local_now = datetime.now()
-        utc_now = datetime.utcnow()
-        utc_offset = utc_now - local_now
-
-        day_start_utc = day_start_utc + utc_offset
-        day_end_utc = day_end_utc + utc_offset
+        # Use LOCAL time boundaries (midnight to midnight)
+        day_start = date_obj.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
 
         # Get tasks due on this day
         tasks_due = self.session.query(Task).filter(
             and_(
-                Task.due_date >= day_start_utc,
-                Task.due_date < day_end_utc
+                Task.due_date >= day_start,
+                Task.due_date < day_end
             )
         ).all()
 
-        # Get tasks completed on this day (using UTC timestamps)
+        # Get tasks completed on this day (using LOCAL time)
         tasks_completed = self.session.query(Task).filter(
             and_(
-                Task.completed_at >= day_start_utc,
-                Task.completed_at < day_end_utc
+                Task.completed_at >= day_start,
+                Task.completed_at < day_end
             )
         ).all()
 
@@ -270,8 +262,8 @@ class TaskManager:
 
     def get_completed_tasks_this_week(self, days=7):
         """Get tasks completed in the last N days based on completed_at timestamp"""
-        # Use UTC time to match database timestamps
-        now = datetime.utcnow()
+        # Use LOCAL time to match database timestamps
+        now = datetime.now()
         start_date = now - timedelta(days=days)
 
         completed_tasks = self.session.query(Task).filter(
@@ -286,8 +278,8 @@ class TaskManager:
 
     def get_created_tasks_this_week(self, days=7):
         """Get tasks created in the last N days based on created_at timestamp"""
-        # Use UTC time to match database timestamps
-        now = datetime.utcnow()
+        # Use LOCAL time to match database timestamps
+        now = datetime.now()
         start_date = now - timedelta(days=days)
 
         created_tasks = self.session.query(Task).filter(
