@@ -398,6 +398,109 @@ def stats():
 
     task_mgr.close()
 
+# CALENDAR/EXPORT COMMANDS
+@cli.group()
+def calendar():
+    """Calendar integration and exports"""
+    pass
+
+@calendar.command()
+@click.option('--filter', '-f', type=click.Choice(['all', 'pending', 'today', 'week']), default='pending', help='Which tasks to export')
+@click.option('--goal', '-g', type=int, help='Export tasks for specific goal only')
+@click.option('--output', '-o', help='Output file path (default: ~/.business-agent/calendar/bizy_tasks.ics)')
+def export(filter, goal, output):
+    """Export tasks to iCalendar (.ics) file"""
+    from agent.integrations.ical import ICalIntegration
+    from agent.models import Task
+
+    task_mgr = TaskManager()
+    ical = ICalIntegration()
+
+    # Get tasks based on filter
+    if filter == 'all':
+        if goal:
+            tasks = task_mgr.session.query(Task).filter_by(parent_goal_id=goal).all()
+        else:
+            tasks = task_mgr.session.query(Task).all()
+    elif filter == 'today':
+        tasks = task_mgr.get_tasks_for_today()
+    elif filter == 'week':
+        # Get tasks due this week
+        today = datetime.now()
+        week_end = today + timedelta(days=7)
+        query = task_mgr.session.query(Task).filter(Task.due_date <= week_end)
+        if goal:
+            query = query.filter_by(parent_goal_id=goal)
+        tasks = query.all()
+    else:  # pending
+        query = task_mgr.session.query(Task).filter(Task.status.in_(['pending', 'in_progress']))
+        if goal:
+            query = query.filter_by(parent_goal_id=goal)
+        tasks = query.all()
+
+    if not tasks:
+        console.print(f"[yellow]No {filter} tasks to export[/yellow]")
+        task_mgr.close()
+        return
+
+    # Export tasks
+    if output:
+        from pathlib import Path
+        ical.calendar_file = Path(output)
+
+    calendar_path = ical.export_tasks(tasks)
+
+    console.print(f"[green]✓[/green] Exported {len(tasks)} task(s) to:")
+    console.print(f"  [cyan]{calendar_path}[/cyan]")
+    console.print(f"\n[dim]Import this file into your calendar app:[/dim]")
+    console.print(f"  • Apple Calendar: File → Import")
+    console.print(f"  • Google Calendar: Settings → Import & export")
+    console.print(f"  • Outlook: File → Open & Export → Import/Export")
+
+    task_mgr.close()
+
+@calendar.command()
+@click.argument('task_id', type=int)
+@click.option('--output', '-o', help='Output file path')
+def export_task(task_id, output):
+    """Export a single task as .ics file"""
+    from agent.integrations.ical import ICalIntegration
+
+    task_mgr = TaskManager()
+    task = task_mgr.get_task(task_id)
+
+    if not task:
+        console.print(f"[red]✗[/red] Task {task_id} not found")
+        task_mgr.close()
+        return
+
+    ical = ICalIntegration()
+    calendar_path = ical.create_single_task_event(task, output)
+
+    console.print(f"[green]✓[/green] Exported task to:")
+    console.print(f"  [cyan]{calendar_path}[/cyan]")
+    console.print(f"\n[dim]You can now:")
+    console.print(f"  • Double-click the file to add it to your calendar")
+    console.print(f"  • Drag and drop into your calendar app")
+
+    task_mgr.close()
+
+@calendar.command()
+def path():
+    """Show calendar export directory path"""
+    from agent.integrations.ical import ICalIntegration
+
+    ical = ICalIntegration()
+    console.print(f"[cyan]Calendar files:[/cyan] {ical.calendar_dir}")
+    console.print(f"[cyan]Main export:[/cyan] {ical.calendar_file}")
+
+# DASHBOARD
+@cli.command()
+def dashboard():
+    """Launch live dashboard (updates every 30s)"""
+    from agent.dashboard import run_dashboard
+    run_dashboard()
+
 # DAILY/WEEKLY REVIEWS
 @cli.command()
 def brief():
