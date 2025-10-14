@@ -398,6 +398,128 @@ def stats():
 
     task_mgr.close()
 
+# ANALYTICS/PREDICTIONS
+@cli.group()
+def predict():
+    """Predictive analytics and forecasts"""
+    pass
+
+@predict.command()
+@click.argument('goal_id', type=int)
+@click.option('--velocity-days', '-v', type=int, default=30, help='Days to calculate velocity over')
+def goal(goal_id, velocity_days):
+    """Predict when a goal will be completed"""
+    from agent.analytics import VelocityPredictor
+
+    predictor = VelocityPredictor()
+    prediction = predictor.predict_goal_completion(goal_id, velocity_days)
+
+    if 'error' in prediction:
+        console.print(f"[red]✗[/red] {prediction['error']}")
+        predictor.close()
+        return
+
+    console.print(f"\n[bold cyan]🔮 Prediction for: {prediction['goal_title']}[/bold cyan]\n")
+
+    if prediction['status'] == 'complete':
+        console.print("[green]✓[/green] All tasks completed!")
+    elif prediction['status'] == 'no_velocity':
+        console.print(f"[yellow]{prediction['message']}[/yellow]")
+        console.print(f"[dim]Remaining tasks: {prediction['remaining_tasks']}[/dim]")
+    else:
+        console.print(f"[bold]Remaining Tasks:[/bold] {prediction['remaining_tasks']}")
+        console.print(f"[bold]Current Velocity:[/bold] {prediction['current_velocity']:.2f} tasks/day")
+        console.print(f"[bold]Days Needed:[/bold] {prediction['days_needed']:.1f} days")
+        console.print(f"[bold]Predicted Completion:[/bold] {prediction['predicted_completion'].strftime('%Y-%m-%d')}")
+
+        if prediction['target_date']:
+            console.print(f"[bold]Target Date:[/bold] {prediction['target_date'].strftime('%Y-%m-%d')}")
+
+            if prediction['on_track']:
+                console.print(f"\n[green]✓ On track to meet target date![/green]")
+            else:
+                console.print(f"\n[red]{prediction['warning']}[/red]")
+                console.print(f"[dim]Consider extending deadline or reducing scope[/dim]")
+
+    console.print()
+    predictor.close()
+
+@predict.command()
+def all():
+    """Show predictions for all active goals"""
+    from agent.analytics import VelocityPredictor
+
+    predictor = VelocityPredictor()
+    predictions = predictor.get_all_goal_predictions()
+
+    if not predictions:
+        console.print("[yellow]No active goals found[/yellow]")
+        predictor.close()
+        return
+
+    console.print("\n[bold cyan]🔮 Goal Completion Predictions[/bold cyan]\n")
+
+    for pred in predictions:
+        if 'error' in pred:
+            continue
+
+        status_icon = "✓" if pred['status'] == 'complete' else "⚠️" if not pred.get('on_track', True) else "✓"
+
+        console.print(f"{status_icon} [bold]{pred['goal_title']}[/bold]")
+
+        if pred['status'] == 'complete':
+            console.print(f"  [green]All tasks completed![/green]\n")
+        elif pred['status'] == 'no_velocity':
+            console.print(f"  [yellow]{pred['message']}[/yellow]")
+            console.print(f"  Remaining: {pred['remaining_tasks']} tasks\n")
+        else:
+            console.print(f"  Remaining: {pred['remaining_tasks']} tasks")
+            console.print(f"  Velocity: {pred['current_velocity']:.2f} tasks/day")
+            console.print(f"  Predicted: {pred['predicted_completion'].strftime('%Y-%m-%d')}")
+
+            if pred.get('warning'):
+                console.print(f"  [red]{pred['warning']}[/red]")
+            console.print()
+
+    predictor.close()
+
+@predict.command()
+@click.argument('goal_id', type=int)
+def required(goal_id):
+    """Calculate required velocity to complete goal on time"""
+    from agent.analytics import VelocityPredictor
+
+    predictor = VelocityPredictor()
+    result = predictor.calculate_required_velocity(goal_id)
+
+    if 'error' in result:
+        console.print(f"[red]✗[/red] {result['error']}")
+        predictor.close()
+        return
+
+    console.print(f"\n[bold cyan]Required Velocity for: {result['goal_title']}[/bold cyan]\n")
+
+    if result['status'] == 'complete':
+        console.print("[green]✓[/green] All tasks completed!")
+    elif result['status'] == 'overdue':
+        console.print(f"[red]Target date has passed[/red]")
+        console.print(f"[dim]Remaining tasks: {result['remaining_tasks']}[/dim]")
+    else:
+        console.print(f"[bold]Remaining Tasks:[/bold] {result['remaining_tasks']}")
+        console.print(f"[bold]Days Until Target:[/bold] {result['days_until_target']} days")
+        console.print(f"[bold]Required Velocity:[/bold] {result['required_velocity']:.2f} tasks/day")
+        console.print(f"[bold]Current Velocity:[/bold] {result['current_velocity']:.2f} tasks/day")
+        console.print(f"[bold]Velocity Gap:[/bold] {result['velocity_gap']:.2f} tasks/day")
+
+        if result['feasible']:
+            console.print(f"\n[green]✓ Target is achievable with moderate effort increase[/green]")
+        else:
+            console.print(f"\n[red]⚠️  Significant velocity increase required[/red]")
+            console.print(f"[dim]Consider extending deadline or reducing scope[/dim]")
+
+    console.print()
+    predictor.close()
+
 # CALENDAR/EXPORT COMMANDS
 @cli.group()
 def calendar():
