@@ -6,9 +6,10 @@
 
 An autonomous AI agent that runs daily to help you execute your business plan, manage tasks, conduct research, and stay on track toward your goals.
 
-## 🎯 Current Status: Phase 1 Complete ✅
+## 🎯 Current Status: Phase 2 In Progress ⚡
 
-**Local Python MVP** with full AI-powered features is ready to use!
+**Phase 1 Complete** ✅ - Local Python MVP with AI-powered features
+**Phase 2 Partial** 🔜 - Charts, PDF export, dashboard, and analytics added!
 
 ---
 
@@ -93,16 +94,44 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 
 ---
 
-## Features (Phase 1)
+## Features
 
-✅ **AI-Powered Goal Breakdown** - Claude breaks big goals into 5-10 actionable tasks  
-✅ **Daily Morning Briefings** - Personalized insights and prioritized tasks  
-✅ **Evening Reviews** - Reflect with AI analysis  
-✅ **Weekly Strategic Reports** - Comprehensive progress analysis  
-✅ **Research Agent** - Market research and competitive intelligence  
-✅ **Task Management** - Priorities, dependencies, progress tracking  
-✅ **CLI Tool** - Quick command-line interactions  
-✅ **Automated Scheduling** - Runs briefings/reviews automatically  
+### ✅ Phase 1 - Core AI Features (Complete)
+
+✅ **AI-Powered Goal Breakdown** - Claude breaks big goals into 5-10 actionable tasks
+✅ **Daily Morning Briefings** - Personalized insights and prioritized tasks
+✅ **Evening Reviews** - Reflect with AI analysis
+✅ **Weekly Strategic Reports** - Comprehensive progress analysis
+✅ **Research Agent** - Market research and competitive intelligence
+✅ **Task Management** - Priorities, dependencies, progress tracking
+✅ **CLI Tool** - Quick command-line interactions
+✅ **Automated Scheduling** - Runs briefings/reviews automatically
+
+### ⚡ Phase 2 - Enhanced Analytics (In Progress)
+
+✅ **Live Dashboard** - Real-time terminal UI with task/goal/stats views (`bizy dashboard`)
+✅ **iCal Export** - Export tasks to .ics files for calendar import (`bizy calendar export`)
+✅ **Velocity Predictions** - AI predicts goal completion dates based on historical velocity (`bizy predict goal <id>`)
+✅ **Terminal Charts** - Beautiful visualizations with plotext (`bizy chart velocity|goals|categories|burndown|...`)
+- Velocity trends with 7-day rolling average
+- Goal progress bar charts
+- Category distribution charts
+- Burndown charts for sprint tracking
+- Productivity heatmaps by day of week
+- Priority breakdown charts
+- Period comparison charts
+
+✅ **PDF Reports** - Professional reports with ReportLab (`bizy pdf weekly|monthly|goal|...`)
+- Weekly/monthly summary reports with stats tables
+- Individual goal reports with task breakdowns
+- All goals overview reports
+- Custom date range reports
+- Velocity analysis reports
+- Beautiful formatting with colors and tables
+
+🔜 **Calendar Integration** - Native CLI calendar view (coming soon)
+🔜 **Google Calendar Sync** - Two-way sync (coming soon)
+🔜 **Email Integration** - Email briefings/reports (coming soon)
 
 ---
 
@@ -110,13 +139,15 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 
 The project is designed to evolve through 4 phases:
 
-### Phase 2: Enhanced Python (Weeks 4-6) 🔜
-- Live CLI dashboard with real-time updates
-- Google Calendar integration
-- Email integration
-- Velocity-based predictions
-- Advanced analytics with charts
-- PDF/CSV exports
+### Phase 2: Enhanced Python (Weeks 4-6) 🔄 In Progress
+- ✅ Live CLI dashboard with real-time updates
+- ✅ Local iCal file export/import
+- ✅ Velocity-based predictions and analytics
+- ✅ Terminal charts with plotext
+- ✅ PDF report generation
+- 🔜 Native CLI calendar view
+- 🔜 Google Calendar integration (two-way sync)
+- 🔜 Email integration (Gmail API)
 
 ### Phase 3: Web Interface (Weeks 7-10)
 - FastAPI backend
@@ -177,47 +208,122 @@ business-agent/
 
 ### Daily Use
 ```bash
-# Morning
-python scripts/morning_brief.py
+# Morning briefing
+bizy brief
+
+# View live dashboard
+bizy dashboard
 
 # Complete a task
-python scripts/agent_cli.py task complete 5
+bizy task complete <ID>
 
-# Evening
-python scripts/evening_review.py
+# Evening review
+bizy review
 ```
 
 ### Task Management
 ```bash
 # Add task
-python scripts/agent_cli.py task add "Task title" -p 1 -h 3
+bizy task add "Task title" -p 1 -h 3 -c category
 
 # List tasks
-python scripts/agent_cli.py task list
+bizy task list
 
 # Complete task
-python scripts/agent_cli.py task complete <ID>
+bizy task complete <ID>
 ```
 
 ### Goal Management
 ```bash
 # Add goal
-python scripts/agent_cli.py goal add "Goal title" -h quarterly -t 2025-12-31
+bizy goal add "Goal title" -h quarterly -t 2025-12-31
 
 # List goals
-python scripts/agent_cli.py goal list
+bizy goal list
 
 # AI breakdown (creates tasks automatically)
-python scripts/agent_cli.py goal breakdown <ID>
+bizy goal breakdown <ID>
+```
+
+### Analytics & Predictions
+```bash
+# Show statistics
+bizy stats
+
+# Predict goal completion
+bizy predict goal <ID>
+
+# Show all predictions
+bizy predict all
+
+# Calculate required velocity
+bizy predict required <ID>
+```
+
+### Charts & Visualizations
+```bash
+# Velocity trend chart
+bizy chart velocity --days 30
+
+# Goal progress charts
+bizy chart goals
+
+# Burndown chart for goal
+bizy chart burndown <goal_id>
+
+# Category distribution
+bizy chart categories --days 30
+
+# Productivity heatmap
+bizy chart productivity --days 30
+
+# Priority breakdown
+bizy chart priorities --days 30
+
+# Period comparison
+bizy chart comparison --days 7
+```
+
+### PDF Reports
+```bash
+# Weekly report
+bizy pdf weekly
+
+# Monthly report
+bizy pdf monthly
+
+# Goal report
+bizy pdf goal <ID>
+
+# All goals report
+bizy pdf all-goals
+
+# Velocity analysis
+bizy pdf velocity --days 30
+
+# Custom date range
+bizy pdf daterange 2025-01-01 2025-01-31
+```
+
+### Calendar Integration
+```bash
+# Export tasks to iCal
+bizy calendar export --filter pending
+
+# Export single task
+bizy calendar export-task <ID>
+
+# Show calendar directory
+bizy calendar path
 ```
 
 ### Research
 ```bash
 # Research topic
-python scripts/agent_cli.py research topic "market trends"
+bizy research topic "market trends"
 
 # Competitor analysis
-python scripts/agent_cli.py research competitors "domain" "offering"
+bizy research competitors "domain" "offering"
 ```
 
 ### Automation
