@@ -6,10 +6,10 @@
 
 An autonomous AI agent that runs daily to help you execute your business plan, manage tasks, conduct research, and stay on track toward your goals.
 
-## 🎯 Current Status: Phase 2 In Progress ⚡
+## 🎯 Current Status: Phase 2 Complete! ✅
 
 **Phase 1 Complete** ✅ - Local Python MVP with AI-powered features
-**Phase 2 Partial** 🔜 - Charts, PDF export, dashboard, and analytics added!
+**Phase 2 Complete** ✅ - Charts, PDF export, dashboard, calendar, and analytics!
 
 ---
 
@@ -129,7 +129,14 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 - Velocity analysis reports
 - Beautiful formatting with colors and tables
 
-🔜 **Calendar Integration** - Native CLI calendar view (coming soon)
+✅ **Calendar View** - Interactive month/week calendar (`bizy calendar view`)
+- Month view with task indicators
+- Task list for selected date
+- Navigation: ← → months, ↑ ↓ weeks
+- Color-coded highlighting (today, selected date)
+- Status and priority indicators
+- Keyboard shortcuts for quick navigation
+
 🔜 **Google Calendar Sync** - Two-way sync (coming soon)
 🔜 **Email Integration** - Email briefings/reports (coming soon)
 
@@ -139,15 +146,15 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 
 The project is designed to evolve through 4 phases:
 
-### Phase 2: Enhanced Python (Weeks 4-6) 🔄 In Progress
+### Phase 2: Enhanced Python (Weeks 4-6) ✅ Complete!
 - ✅ Live CLI dashboard with real-time updates
 - ✅ Local iCal file export/import
 - ✅ Velocity-based predictions and analytics
 - ✅ Terminal charts with plotext
 - ✅ PDF report generation
-- 🔜 Native CLI calendar view
-- 🔜 Google Calendar integration (two-way sync)
-- 🔜 Email integration (Gmail API)
+- ✅ Native CLI calendar view
+- 🔜 Google Calendar integration (two-way sync) - Moved to Phase 2.5
+- 🔜 Email integration (Gmail API) - Moved to Phase 2.5
 
 ### Phase 3: Web Interface (Weeks 7-10)
 - FastAPI backend
@@ -307,6 +314,9 @@ bizy pdf daterange 2025-01-01 2025-01-31
 
 ### Calendar Integration
 ```bash
+# Launch interactive calendar view
+bizy calendar view
+
 # Export tasks to iCal
 bizy calendar export --filter pending
 
