@@ -714,6 +714,12 @@ def calendar():
     pass
 
 @calendar.command()
+def view():
+    """Launch interactive calendar view"""
+    from agent.calendar_view import run_calendar
+    run_calendar()
+
+@calendar.command()
 @click.option('--filter', '-f', type=click.Choice(['all', 'pending', 'today', 'week']), default='pending', help='Which tasks to export')
 @click.option('--goal', '-g', type=int, help='Export tasks for specific goal only')
 @click.option('--output', '-o', help='Output file path (default: ~/.business-agent/calendar/bizy_tasks.ics)')
