@@ -520,6 +520,193 @@ def required(goal_id):
     console.print()
     predictor.close()
 
+# CHART COMMANDS
+@cli.group()
+def chart():
+    """Generate terminal charts and visualizations"""
+    pass
+
+@chart.command()
+@click.option('--days', '-d', type=int, default=30, help='Number of days to analyze')
+def velocity(days):
+    """Show velocity trend chart"""
+    from agent.charts import ChartGenerator
+
+    chart_gen = ChartGenerator()
+    chart_output = chart_gen.velocity_chart(days=days)
+    console.print(chart_output)
+    chart_gen.close()
+
+@chart.command()
+def goals():
+    """Show goal progress chart"""
+    from agent.charts import ChartGenerator
+
+    chart_gen = ChartGenerator()
+    chart_output = chart_gen.goal_progress_chart()
+    console.print(chart_output)
+    chart_gen.close()
+
+@chart.command()
+@click.option('--days', '-d', type=int, default=30, help='Number of days to analyze')
+def categories(days):
+    """Show task distribution by category"""
+    from agent.charts import ChartGenerator
+
+    chart_gen = ChartGenerator()
+    chart_output = chart_gen.category_distribution(days=days)
+    console.print(chart_output)
+    chart_gen.close()
+
+@chart.command()
+@click.argument('goal_id', type=int)
+def burndown(goal_id):
+    """Show burndown chart for a goal"""
+    from agent.charts import ChartGenerator
+
+    chart_gen = ChartGenerator()
+    chart_output = chart_gen.burndown_chart(goal_id)
+    console.print(chart_output)
+    chart_gen.close()
+
+@chart.command()
+@click.option('--days', '-d', type=int, default=30, help='Number of days to analyze')
+def productivity(days):
+    """Show productivity heatmap by day of week"""
+    from agent.charts import ChartGenerator
+
+    chart_gen = ChartGenerator()
+    chart_output = chart_gen.productivity_heatmap(days=days)
+    console.print(chart_output)
+    chart_gen.close()
+
+@chart.command()
+@click.option('--days', '-d', type=int, default=30, help='Number of days to analyze')
+def priorities(days):
+    """Show task breakdown by priority"""
+    from agent.charts import ChartGenerator
+
+    chart_gen = ChartGenerator()
+    chart_output = chart_gen.priority_breakdown(days=days)
+    console.print(chart_output)
+    chart_gen.close()
+
+@chart.command()
+@click.option('--days', '-d', type=int, default=7, help='Number of days per period')
+def comparison(days):
+    """Compare current vs previous period"""
+    from agent.charts import ChartGenerator
+
+    chart_gen = ChartGenerator()
+    chart_output = chart_gen.comparison_chart(days=days)
+    console.print(chart_output)
+    chart_gen.close()
+
+# PDF EXPORT COMMANDS
+@cli.group()
+def pdf():
+    """Generate PDF reports"""
+    pass
+
+@pdf.command()
+@click.option('--filename', '-f', help='Custom filename')
+@click.option('--charts/--no-charts', default=False, help='Include charts in report')
+def weekly(filename, charts):
+    """Generate weekly summary PDF report"""
+    from agent.pdf_export import PDFExporter
+
+    exporter = PDFExporter()
+    pdf_path = exporter.export_weekly_report(filename=filename, include_charts=charts)
+
+    console.print(f"[green]✓[/green] Weekly report generated:")
+    console.print(f"  [cyan]{pdf_path}[/cyan]")
+
+    exporter.close()
+
+@pdf.command()
+@click.option('--filename', '-f', help='Custom filename')
+def monthly(filename):
+    """Generate monthly summary PDF report"""
+    from agent.pdf_export import PDFExporter
+
+    exporter = PDFExporter()
+    pdf_path = exporter.export_monthly_report(filename=filename)
+
+    console.print(f"[green]✓[/green] Monthly report generated:")
+    console.print(f"  [cyan]{pdf_path}[/cyan]")
+
+    exporter.close()
+
+@pdf.command()
+@click.argument('goal_id', type=int)
+@click.option('--filename', '-f', help='Custom filename')
+def goal(goal_id, filename):
+    """Generate PDF report for a specific goal"""
+    from agent.pdf_export import PDFExporter
+
+    exporter = PDFExporter()
+    pdf_path = exporter.export_goal_report(goal_id, filename=filename)
+
+    if pdf_path:
+        console.print(f"[green]✓[/green] Goal report generated:")
+        console.print(f"  [cyan]{pdf_path}[/cyan]")
+    else:
+        console.print(f"[red]✗[/red] Goal {goal_id} not found")
+
+    exporter.close()
+
+@pdf.command()
+@click.option('--filename', '-f', help='Custom filename')
+def all_goals(filename):
+    """Generate PDF report for all active goals"""
+    from agent.pdf_export import PDFExporter
+
+    exporter = PDFExporter()
+    pdf_path = exporter.export_all_goals_report(filename=filename)
+
+    console.print(f"[green]✓[/green] All goals report generated:")
+    console.print(f"  [cyan]{pdf_path}[/cyan]")
+
+    exporter.close()
+
+@pdf.command()
+@click.option('--days', '-d', type=int, default=30, help='Number of days to analyze')
+@click.option('--filename', '-f', help='Custom filename')
+def velocity(days, filename):
+    """Generate PDF velocity analysis report"""
+    from agent.pdf_export import PDFExporter
+
+    exporter = PDFExporter()
+    pdf_path = exporter.export_velocity_report(days=days, filename=filename)
+
+    console.print(f"[green]✓[/green] Velocity report generated:")
+    console.print(f"  [cyan]{pdf_path}[/cyan]")
+
+    exporter.close()
+
+@pdf.command()
+@click.argument('start_date')
+@click.argument('end_date')
+@click.option('--filename', '-f', help='Custom filename')
+def daterange(start_date, end_date, filename):
+    """Generate PDF report for custom date range (YYYY-MM-DD format)"""
+    from agent.pdf_export import PDFExporter
+
+    try:
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+    except ValueError:
+        console.print("[red]✗[/red] Invalid date format. Use YYYY-MM-DD")
+        return
+
+    exporter = PDFExporter()
+    pdf_path = exporter.export_date_range_report(start, end, filename=filename)
+
+    console.print(f"[green]✓[/green] Date range report generated:")
+    console.print(f"  [cyan]{pdf_path}[/cyan]")
+
+    exporter.close()
+
 # CALENDAR/EXPORT COMMANDS
 @cli.group()
 def calendar():
