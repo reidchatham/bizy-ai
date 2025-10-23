@@ -14,6 +14,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Static, DataTable
 from textual.containers import Container, Vertical, Horizontal
 from textual.reactive import reactive
+from textual.message import Message
 from rich.text import Text
 from agent.tasks import TaskManager
 from agent.models import Task
@@ -42,9 +43,21 @@ class CalendarGrid(Static):
         """React to year changes"""
         self.update_calendar()
 
+    def watch_selected_date(self, date: datetime.date) -> None:
+        """React to selected date changes"""
+        self.update_calendar()
+        # Notify parent app to update task list
+        self.post_message(self.DateSelected(date))
+
     def on_mount(self) -> None:
         """Initialize calendar on mount"""
         self.update_calendar()
+
+    class DateSelected(Message):
+        """Message sent when a date is selected"""
+        def __init__(self, date: datetime.date) -> None:
+            self.date = date
+            super().__init__()
 
     def update_calendar(self) -> None:
         """Render the calendar grid"""
@@ -124,7 +137,8 @@ class CalendarGrid(Static):
         # Add legend
         lines.append("")
         lines.append("[dim]• = has tasks  [green]●[/green] = today  [yellow]●[/yellow] = selected[/dim]")
-        lines.append("[dim]← → = prev/next month  ↑ ↓ = select day  Enter = view tasks[/dim]")
+        lines.append("[dim]← → = prev/next day  ↑ ↓ = prev/next week  Ctrl+← → = prev/next month[/dim]")
+        lines.append("[dim]T = today  R = refresh  Q = quit[/dim]")
 
         # Update display
         grid = self.query_one("#calendar-grid", Static)
@@ -149,7 +163,22 @@ class CalendarGrid(Static):
     def select_day(self, day: int) -> None:
         """Select a specific day"""
         self.selected_date = datetime(self.current_year, self.current_month, day).date()
-        self.update_calendar()
+
+    def next_day(self) -> None:
+        """Navigate to next day"""
+        new_date = self.selected_date + timedelta(days=1)
+        if new_date.month != self.current_month:
+            self.current_month = new_date.month
+            self.current_year = new_date.year
+        self.selected_date = new_date
+
+    def prev_day(self) -> None:
+        """Navigate to previous day"""
+        new_date = self.selected_date - timedelta(days=1)
+        if new_date.month != self.current_month:
+            self.current_month = new_date.month
+            self.current_year = new_date.year
+        self.selected_date = new_date
 
 
 class TaskListWidget(Static):
@@ -249,10 +278,12 @@ class CalendarApp(App):
 
     BINDINGS = [
         ("q", "quit", "Quit"),
-        ("left", "prev_month", "Previous Month"),
-        ("right", "next_month", "Next Month"),
+        ("left", "prev_day", "Previous Day"),
+        ("right", "next_day", "Next Day"),
         ("up", "prev_week", "Previous Week"),
         ("down", "next_week", "Next Week"),
+        ("ctrl+left", "prev_month", "Previous Month"),
+        ("ctrl+right", "next_month", "Next Month"),
         ("t", "today", "Today"),
         ("r", "refresh", "Refresh"),
     ]
@@ -273,6 +304,14 @@ class CalendarApp(App):
             yield self.task_list
         yield Footer()
 
+    def action_prev_day(self) -> None:
+        """Navigate to previous day"""
+        self.calendar.prev_day()
+
+    def action_next_day(self) -> None:
+        """Navigate to next day"""
+        self.calendar.next_day()
+
     def action_prev_month(self) -> None:
         """Navigate to previous month"""
         self.calendar.prev_month()
@@ -288,8 +327,6 @@ class CalendarApp(App):
             self.calendar.current_month = new_date.month
             self.calendar.current_year = new_date.year
         self.calendar.selected_date = new_date
-        self.calendar.update_calendar()
-        self.task_list.update_tasks(new_date)
 
     def action_next_week(self) -> None:
         """Select next week"""
@@ -298,8 +335,6 @@ class CalendarApp(App):
             self.calendar.current_month = new_date.month
             self.calendar.current_year = new_date.year
         self.calendar.selected_date = new_date
-        self.calendar.update_calendar()
-        self.task_list.update_tasks(new_date)
 
     def action_today(self) -> None:
         """Jump to today"""
@@ -307,18 +342,20 @@ class CalendarApp(App):
         self.calendar.current_month = today.month
         self.calendar.current_year = today.year
         self.calendar.selected_date = today.date()
-        self.calendar.update_calendar()
-        self.task_list.update_tasks(today.date())
 
     def action_refresh(self) -> None:
         """Refresh the view"""
         self.calendar.update_calendar()
         self.task_list.update_tasks()
 
+    def on_calendar_grid_date_selected(self, message: CalendarGrid.DateSelected) -> None:
+        """Handle date selection from calendar"""
+        self.task_list.update_tasks(message.date)
+
     def on_mount(self) -> None:
         """Initialize view on mount"""
         self.title = "Bizy AI Calendar"
-        self.sub_title = "Navigate: ←→ months  ↑↓ weeks  T=today  Q=quit"
+        self.sub_title = "Navigate: ← → days  ↑ ↓ weeks  Ctrl+← → months  T=today  Q=quit"
 
 
 def run_calendar():
