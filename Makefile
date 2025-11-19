@@ -52,8 +52,9 @@ docker-build:  ## Build Docker images
 docker-up:  ## Start all services with Docker Compose
 	@echo "$(BLUE)Starting Docker services...$(NC)"
 	@if [ ! -f .env ]; then \
-		echo "$(YELLOW)Creating .env file with JWT_SECRET...$(NC)"; \
+		echo "$(YELLOW)Creating .env file...$(NC)"; \
 		echo "JWT_SECRET=$$(openssl rand -hex 32)" > .env; \
+		echo "ANTHROPIC_API_KEY=" >> .env; \
 	fi
 	@docker-compose up -d
 	@sleep 5
@@ -97,7 +98,7 @@ logs-postgres:  ## View PostgreSQL logs
 db-migrate:  ## Run database migrations
 	@echo "$(BLUE)Running database migrations...$(NC)"
 	@docker-compose exec auth-server bundle exec rake db:migrate
-	@docker-compose exec backend alembic upgrade head
+	@echo "$(GREEN)✓ Migrations complete$(NC)"
 
 db-shell:  ## Open PostgreSQL shell
 	@docker-compose exec postgres psql -U bizy -d bizy_dev
