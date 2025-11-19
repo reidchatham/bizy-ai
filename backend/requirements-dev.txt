@@ -14,10 +14,9 @@ pydantic==2.5.0
 pydantic-settings==2.1.0
 email-validator==2.1.0
 
-# Authentication
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-bcrypt==4.1.1
+# Authentication (JWT validation for auth-server-ruby)
+PyJWT==2.8.0  # JWT token validation
+httpx==0.25.2  # Already included below, for auth server communication
 
 # Redis (optional for now)
 # redis==5.0.1
@@ -30,8 +29,8 @@ bcrypt==4.1.1
 python-socketio==5.10.0
 websockets==12.0
 
-# HTTP client for external APIs
-httpx==0.25.2
+# HTTP client for external APIs and auth server
+httpx==0.25.2  # Auth server communication
 aiohttp==3.9.1
 
 # AI/ML

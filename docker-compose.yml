@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: bizy-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bizy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bizy_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bizy_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bizy}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bizy-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: bizy-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - bizy-network
+
+  # Auth Server (Ruby microservice)
+  auth-server:
+    build:
+      context: ../auth-server-ruby
+      dockerfile: Dockerfile
+    container_name: bizy-auth-server
+    environment:
+      RACK_ENV: ${RACK_ENV:-development}
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: sqlite3:/app/db/development.sqlite3
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      FROM_EMAIL: ${FROM_EMAIL:-noreply@bizy.local}
+    ports:
+      - "4567:4567"
+    volumes:
+      - ../auth-server-ruby:/app
+      - auth_db:/app/db
+    depends_on:
+      - mailhog
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4567/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - bizy-network
+
+  # MailHog (Email testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: bizy-mailhog
+    ports:
+      - "8025:8025"  # Web UI
+      - "1025:1025"  # SMTP server
+    networks:
+      - bizy-network
+
+  # Bizy Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bizy-backend
+    environment:
+      DEBUG: ${DEBUG:-True}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bizy}:${POSTGRES_PASSWORD:-bizy_dev_password}@postgres:5432/${POSTGRES_DB:-bizy_dev}
+      REDIS_URL: redis://redis:6379/0
+      AUTH_SERVER_URL: http://auth-server:4567
+      JWT_SECRET: ${JWT_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-server:
+        condition: service_started
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - bizy-network
+
+  # Frontend (Future)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: bizy-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - bizy-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  auth_db:
+
+networks:
+  bizy-network:
+    driver: bridge
