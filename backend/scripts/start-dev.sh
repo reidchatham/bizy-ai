@@ -38,9 +38,15 @@ check_port() {
 # Check if services are already running
 if check_port 4567; then
     echo -e "${YELLOW}⚠️  Port 4567 (auth-server) already in use${NC}"
-    echo "   Kill it? (y/N)"
-    read -r response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
+    if [ -z "$CI" ]; then
+        echo "   Kill it? (y/N)"
+        read -r response
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            lsof -ti:4567 | xargs kill -9
+            echo -e "${GREEN}✓ Killed process on port 4567${NC}"
+        fi
+    else
+        # Non-interactive mode (CI or automated deployment)
         lsof -ti:4567 | xargs kill -9
         echo -e "${GREEN}✓ Killed process on port 4567${NC}"
     fi
@@ -48,9 +54,15 @@ fi
 
 if check_port 8000; then
     echo -e "${YELLOW}⚠️  Port 8000 (backend) already in use${NC}"
-    echo "   Kill it? (y/N)"
-    read -r response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
+    if [ -z "$CI" ]; then
+        echo "   Kill it? (y/N)"
+        read -r response
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            lsof -ti:8000 | xargs kill -9
+            echo -e "${GREEN}✓ Killed process on port 8000${NC}"
+        fi
+    else
+        # Non-interactive mode (CI or automated deployment)
         lsof -ti:8000 | xargs kill -9
         echo -e "${GREEN}✓ Killed process on port 8000${NC}"
     fi
