@@ -26,9 +26,9 @@ def get_db():
     Yields a database session and ensures it's closed after use.
     """
     # Import here to avoid circular imports
-    from agent.models import get_session
+    from database import SessionLocal
 
-    db = get_session()
+    db = SessionLocal()
     try:
         yield db
     finally:
