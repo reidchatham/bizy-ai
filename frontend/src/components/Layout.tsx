@@ -1,5 +1,6 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Target, BarChart3, Package, LogOut } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Target, BarChart3, Package, User, Settings, LogOut } from 'lucide-react';
+import { Button } from './ui';
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -38,13 +39,21 @@ export default function Layout() {
               </Link>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent"
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            <Link to="/profile">
+              <Button variant="ghost" size="icon">
+                <User size={18} />
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </Button>
+          </div>
         </div>
       </nav>
       <main className="container mx-auto px-4 py-8">

@@ -6,6 +6,7 @@ import Tasks from './pages/Tasks';
 import Goals from './pages/Goals';
 import Analytics from './pages/Analytics';
 import Components from './pages/Components';
+import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 
@@ -52,6 +53,7 @@ function App() {
             <Route path="goals" element={<Goals />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="components" element={<Components />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
       </BrowserRouter>
