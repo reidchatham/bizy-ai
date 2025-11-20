@@ -39,7 +39,10 @@ class Goal(Base):
     # Relationships
     user = relationship("User", back_populates="goals")
     tasks = relationship("Task", back_populates="goal", cascade="all, delete-orphan")
-    subgoals = relationship("Goal", backref="parent", remote_side=[parent_goal_id])
+
+    # Self-referential relationship for goal hierarchy
+    parent = relationship("Goal", remote_side=[id], back_populates="subgoals")
+    subgoals = relationship("Goal", back_populates="parent", remote_side=[parent_goal_id])
 
     # Composite indexes for common queries
     __table_args__ = (

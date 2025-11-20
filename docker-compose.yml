@@ -11,6 +11,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/docker:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bizy}"]
       interval: 10s
@@ -84,7 +85,7 @@ services:
     environment:
       DEBUG: ${DEBUG:-True}
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-bizy}:${POSTGRES_PASSWORD:-bizy_dev_password}@postgres:5432/${POSTGRES_DB:-bizy_dev}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bizy}:${POSTGRES_PASSWORD:-bizy_dev_password}@postgres:5432/${POSTGRES_DB:-bizy_dev}?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       AUTH_SERVER_URL: http://auth-server:4567
       JWT_SECRET: ${JWT_SECRET}
