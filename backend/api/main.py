@@ -8,8 +8,8 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 import os
 
 # Import routes
-from api.routes import docs, auth_proxy, tasks, goals, briefings
-# from api.routes import analytics, dashboard
+from api.routes import docs, auth_proxy, tasks, goals, briefings, analytics
+# from api.routes import dashboard
 
 app = FastAPI(
     title="Bizy AI API",
@@ -74,7 +74,7 @@ app.include_router(auth_proxy.router, prefix="/api/auth", tags=["authentication"
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(goals.router, prefix="/api/goals", tags=["goals"])
 app.include_router(briefings.router, prefix="/api/briefings", tags=["briefings"])
-# app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 # app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 
 
