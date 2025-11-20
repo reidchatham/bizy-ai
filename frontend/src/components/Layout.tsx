@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Target, BarChart3, LogOut } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Target, BarChart3, Package, LogOut } from 'lucide-react';
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -31,6 +31,10 @@ export default function Layout() {
               <Link to="/analytics" className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent">
                 <BarChart3 size={18} />
                 Analytics
+              </Link>
+              <Link to="/components" className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent">
+                <Package size={18} />
+                Components
               </Link>
             </div>
           </div>

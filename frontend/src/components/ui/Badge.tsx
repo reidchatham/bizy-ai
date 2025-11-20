@@ -1,0 +1,39 @@
+import { HTMLAttributes, forwardRef } from 'react';
+import { cn } from '../../lib/utils';
+
+export interface BadgeProps extends HTMLAttributes<HTMLDivElement> {
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
+}
+
+const Badge = forwardRef<HTMLDivElement, BadgeProps>(
+  ({ className, variant = 'default', ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors',
+          'focus:outline-none focus:ring-2 focus:ring-offset-2',
+          {
+            'border-transparent bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]':
+              variant === 'default',
+            'border-transparent bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]':
+              variant === 'secondary',
+            'border-transparent bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))]':
+              variant === 'destructive',
+            'text-[hsl(var(--foreground))]': variant === 'outline',
+            'border-transparent bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100':
+              variant === 'success',
+            'border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100':
+              variant === 'warning',
+          },
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+
+Badge.displayName = 'Badge';
+
+export { Badge };

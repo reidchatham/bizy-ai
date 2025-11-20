@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Goals from './pages/Goals';
 import Analytics from './pages/Analytics';
+import Components from './pages/Components';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 
@@ -50,6 +51,7 @@ function App() {
             <Route path="tasks" element={<Tasks />} />
             <Route path="goals" element={<Goals />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="components" element={<Components />} />
           </Route>
         </Routes>
       </BrowserRouter>
