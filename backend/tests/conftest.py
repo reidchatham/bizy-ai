@@ -3,6 +3,7 @@ Pytest configuration and fixtures
 """
 
 import pytest
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -10,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 from api.main import app
 from api.dependencies import get_db
+from api.auth import get_current_user, TokenData
 from models.base import Base
 from models.user import User
 from models.task import Task
@@ -26,6 +28,18 @@ engine = create_engine(
 )
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+# Global variable to store current test user for dependency override
+_current_test_user = None
+
+
+def get_mock_current_user():
+    """Override for get_current_user dependency"""
+    global _current_test_user
+    if _current_test_user is None:
+        raise ValueError("Test user not set")
+    return _current_test_user
 
 
 @pytest.fixture(scope="function")
@@ -90,44 +104,97 @@ def test_user2(db):
 
 
 @pytest.fixture
-def auth_headers(test_user, monkeypatch):
-    """Mock JWT authentication headers"""
-    from api.auth import TokenData
-    from api.routes import goals, tasks
+def auth_headers(test_user):
+    """Mock JWT authentication headers using dependency override"""
+    global _current_test_user
 
-    async def mock_get_current_user():
-        return TokenData(
-            user_id=test_user.id,
-            username=test_user.username,
-            email=test_user.email,
-            is_admin=False
-        )
+    # Create token data for test user
+    token_data = TokenData(
+        user_id=test_user.id,
+        username=test_user.username,
+        email=test_user.email,
+        is_admin=False,
+        exp=9999999999  # Far future expiration
+    )
 
-    # Patch in all route modules
-    monkeypatch.setattr("api.auth.get_current_user", mock_get_current_user)
-    monkeypatch.setattr("api.routes.goals.get_current_user", mock_get_current_user)
-    monkeypatch.setattr("api.routes.tasks.get_current_user", mock_get_current_user)
+    # Set global test user and override dependency
+    _current_test_user = token_data
+    app.dependency_overrides[get_current_user] = lambda: token_data
 
-    return {"Authorization": "Bearer fake-jwt-token"}
+    yield {"Authorization": "Bearer fake-jwt-token"}
+
+    # Cleanup
+    _current_test_user = None
+    if get_current_user in app.dependency_overrides:
+        del app.dependency_overrides[get_current_user]
 
 
 @pytest.fixture
-def auth_headers_user2(test_user2, monkeypatch):
+def auth_headers_user2(test_user2):
     """Mock JWT authentication headers for second user"""
-    from api.auth import TokenData
-    from api.routes import goals, tasks
+    global _current_test_user
 
-    async def mock_get_current_user():
-        return TokenData(
-            user_id=test_user2.id,
-            username=test_user2.username,
-            email=test_user2.email,
-            is_admin=False
-        )
+    # Create token data for test user 2
+    token_data = TokenData(
+        user_id=test_user2.id,
+        username=test_user2.username,
+        email=test_user2.email,
+        is_admin=False,
+        exp=9999999999
+    )
 
-    # Patch in all route modules
-    monkeypatch.setattr("api.auth.get_current_user", mock_get_current_user)
-    monkeypatch.setattr("api.routes.goals.get_current_user", mock_get_current_user)
-    monkeypatch.setattr("api.routes.tasks.get_current_user", mock_get_current_user)
+    # Set global test user and override dependency
+    _current_test_user = token_data
+    app.dependency_overrides[get_current_user] = lambda: token_data
 
-    return {"Authorization": "Bearer fake-jwt-token-user2"}
+    yield {"Authorization": "Bearer fake-jwt-token-user2"}
+
+    # Cleanup
+    _current_test_user = None
+    if get_current_user in app.dependency_overrides:
+        del app.dependency_overrides[get_current_user]
+
+
+@pytest.fixture
+def sample_task(db, test_user):
+    """Create a sample task for testing"""
+    task = Task(
+        user_id=test_user.id,
+        title="Sample Task",
+        description="A sample task for testing",
+        priority=2,
+        status="pending",
+        category="testing"
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@pytest.fixture
+def sample_goal(db, test_user):
+    """Create a sample goal for testing"""
+    goal = Goal(
+        user_id=test_user.id,
+        title="Sample Goal",
+        description="A sample goal for testing",
+        horizon="monthly",
+        status="active",
+        progress_percentage=0.0
+    )
+    db.add(goal)
+    db.commit()
+    db.refresh(goal)
+    return goal
+
+
+@pytest.fixture
+def mock_anthropic_client(monkeypatch):
+    """Mock Anthropic API client for AI endpoint tests"""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-api-key")
+
+    with patch('anthropic.Anthropic') as mock_anthropic:
+        mock_client = MagicMock()
+        mock_anthropic.return_value = mock_client
+        yield mock_client
