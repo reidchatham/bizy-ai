@@ -1,8 +1,11 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       environment:
@@ -23,17 +26,12 @@ env:
   DIGITALOCEAN_APP_NAME: bizy-ai
 
 jobs:
-  # Run all checks first
-  check:
-    name: Run CI Checks
-    uses: ./.github/workflows/ci.yml
-
   # Deploy to DigitalOcean App Platform
   deploy:
     name: Deploy to DigitalOcean
-    needs: check
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # Only deploy if CI passed (workflow_run) or manual dispatch
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     environment:
       name: production
       url: https://bizy.ai
