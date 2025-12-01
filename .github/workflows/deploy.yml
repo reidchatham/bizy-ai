@@ -1,0 +1,128 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+# Ensure only one deployment runs at a time
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DIGITALOCEAN_APP_NAME: bizy-ai
+
+jobs:
+  # Run all checks first
+  check:
+    name: Run CI Checks
+    uses: ./.github/workflows/ci.yml
+
+  # Deploy to DigitalOcean App Platform
+  deploy:
+    name: Deploy to DigitalOcean
+    needs: check
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://bizy.ai
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Get App ID
+        id: app-id
+        run: |
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "${{ env.DIGITALOCEAN_APP_NAME }}" | awk '{print $1}')
+          if [ -z "$APP_ID" ]; then
+            echo "::error::App '${{ env.DIGITALOCEAN_APP_NAME }}' not found"
+            exit 1
+          fi
+          echo "app_id=$APP_ID" >> $GITHUB_OUTPUT
+
+      - name: Deploy App
+        run: |
+          doctl apps create-deployment ${{ steps.app-id.outputs.app_id }} --wait
+
+      - name: Verify Deployment
+        run: |
+          # Wait for deployment to stabilize
+          sleep 30
+
+          # Check backend health
+          BACKEND_URL=$(doctl apps get ${{ steps.app-id.outputs.app_id }} --format DefaultIngress --no-header)
+
+          echo "Checking health at ${BACKEND_URL}/api/health"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/api/health" || echo "000")
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::warning::Health check returned status $HTTP_STATUS"
+          else
+            echo "Health check passed!"
+          fi
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "::notice::Deployment to production completed successfully"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "::error::Deployment to production failed"
+
+  # Optional: Run smoke tests after deployment
+  smoke-test:
+    name: Smoke Tests
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Get App URL
+        id: app-url
+        run: |
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "${{ env.DIGITALOCEAN_APP_NAME }}" | awk '{print $1}')
+          APP_URL=$(doctl apps get $APP_ID --format DefaultIngress --no-header)
+          echo "url=$APP_URL" >> $GITHUB_OUTPUT
+
+      - name: Run Smoke Tests
+        run: |
+          BASE_URL="${{ steps.app-url.outputs.url }}"
+
+          # Test health endpoint
+          echo "Testing /api/health..."
+          curl -sf "${BASE_URL}/api/health" || exit 1
+
+          # Test docs endpoint
+          echo "Testing /api/docs..."
+          curl -sf "${BASE_URL}/api/docs" -o /dev/null || exit 1
+
+          # Test frontend
+          echo "Testing frontend..."
+          curl -sf "${BASE_URL}/" -o /dev/null || exit 1
+
+          echo "All smoke tests passed!"

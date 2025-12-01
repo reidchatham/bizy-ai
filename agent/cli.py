@@ -143,31 +143,64 @@ def add(title, description, priority, category, hours, goal):
 @task.command()
 @click.option('--filter', '-f', type=click.Choice(['all', 'pending', 'completed', 'today']), default='all', help='Filter tasks')
 @click.option('--goal', '-g', type=int, help='Filter by goal ID')
-def list(filter, goal):
+@click.option('--global', 'global_view', is_flag=True, help='Show tasks from all projects (not just current repo)')
+@click.option('--project', '-pr', help='Filter tasks by specific project name')
+@click.option('--unassigned', is_flag=True, help='Show only tasks without a project assignment')
+def list(filter, goal, global_view, project, unassigned):
     """List tasks with optional filters"""
-    task_mgr = TaskManager()
+    # Determine project filtering mode
+    if global_view or unassigned:
+        task_mgr = TaskManager(project_filter=False)
+    elif project:
+        # Create a custom TaskManager with specific project filter
+        task_mgr = TaskManager(project_filter=False)
+        # We'll filter manually below
+    else:
+        task_mgr = TaskManager(project_filter=True)
 
     # Get tasks based on filter
     if filter == 'all':
         from agent.models import Task
-        if goal:
-            tasks = task_mgr.session.query(Task).filter_by(parent_goal_id=goal).all()
+        query = task_mgr.session.query(Task)
+        if unassigned:
+            query = query.filter(Task.project_name == None)
         else:
-            tasks = task_mgr.session.query(Task).all()
-    elif filter == 'completed':
-        from agent.models import Task
-        query = task_mgr.session.query(Task).filter_by(status='completed')
+            query = task_mgr._apply_project_filter(query)
+        if project:
+            query = query.filter(Task.project_name == project)
         if goal:
             query = query.filter_by(parent_goal_id=goal)
+        tasks = query.all()
+    elif filter == 'completed':
+        from agent.models import Task
+        query = task_mgr.session.query(Task).filter(Task.status == 'completed')
+        if unassigned:
+            query = query.filter(Task.project_name == None)
+        elif project:
+            query = query.filter(Task.project_name == project)
+        if goal:
+            query = query.filter(Task.parent_goal_id == goal)
         tasks = query.all()
     elif filter == 'pending':
         from agent.models import Task
         query = task_mgr.session.query(Task).filter(Task.status.in_(['pending', 'in_progress']))
+        if unassigned:
+            query = query.filter(Task.project_name == None)
+        else:
+            query = task_mgr._apply_project_filter(query)
+        if project:
+            query = query.filter(Task.project_name == project)
         if goal:
             query = query.filter_by(parent_goal_id=goal)
         tasks = query.all()
     else:  # today
         tasks = task_mgr.get_tasks_for_today()
+        if unassigned:
+            tasks = [t for t in tasks if t.project_name is None]
+        if project:
+            tasks = [t for t in tasks if t.project_name == project]
+        if goal:
+            tasks = [t for t in tasks if t.parent_goal_id == goal]
 
     if not tasks:
         console.print(f"[yellow]No {filter} tasks found[/yellow]")
@@ -180,6 +213,16 @@ def list(filter, goal):
         title_parts.append(f"({filter.title()})")
     if goal:
         title_parts.append(f"for Goal #{goal}")
+
+    # Show project context
+    if unassigned:
+        title_parts.append("[Unassigned]")
+    elif global_view:
+        title_parts.append("[All Projects]")
+    elif project:
+        title_parts.append(f"[Project: {project}]")
+    elif task_mgr.context:
+        title_parts.append(f"[Project: {task_mgr.context['project_name']}]")
 
     table = Table(title=" ".join(title_parts), show_header=True, header_style="bold cyan")
     table.add_column("ID", style="dim")
@@ -226,6 +269,34 @@ def complete(task_id):
         console.print(f"[red]✗[/red] Task {task_id} not found")
     task_mgr.close()
 
+@task.command()
+@click.argument('task_id', type=int)
+@click.option('--project', '-p', required=True, help='Project name to assign')
+@click.option('--path', help='Repository path (auto-detected from project list if omitted)')
+def assign(task_id, project, path):
+    """Assign a task to a project"""
+    task_mgr = TaskManager(project_filter=False)
+
+    # If path not provided, try to find it from existing tasks/goals with this project
+    if not path:
+        from agent.models import Task, Goal
+        existing = task_mgr.session.query(Task).filter(Task.project_name == project).first()
+        if existing and existing.repository_path:
+            path = existing.repository_path
+        else:
+            existing_goal = task_mgr.session.query(Goal).filter(Goal.project_name == project).first()
+            if existing_goal and existing_goal.repository_path:
+                path = existing_goal.repository_path
+
+    task = task_mgr.assign_to_project(task_id, project, path)
+    if task:
+        console.print(f"[green]✓[/green] Assigned task '{task.title}' to project: {project}")
+        if path:
+            console.print(f"[dim]  Path: {path}[/dim]")
+    else:
+        console.print(f"[red]✗[/red] Task {task_id} not found")
+    task_mgr.close()
+
 # GOAL COMMANDS
 @cli.group()
 def goal():
@@ -254,10 +325,19 @@ def add(title, description, horizon, target):
     planner.close()
 
 @goal.command()
-def list():
+@click.option('--global', 'global_view', is_flag=True, help='Show goals from all projects')
+@click.option('--unassigned', is_flag=True, help='Show only goals without a project assignment')
+def list(global_view, unassigned):
     """List all active goals"""
-    planner = BusinessPlanner()
-    goals = planner.get_active_goals()
+    if global_view or unassigned:
+        planner = BusinessPlanner(project_filter=False)
+    else:
+        planner = BusinessPlanner()
+
+    if unassigned:
+        goals = planner.get_unassigned_goals()
+    else:
+        goals = planner.get_active_goals()
 
     if not goals:
         console.print("[yellow]No active goals[/yellow]")
@@ -269,9 +349,21 @@ def list():
         planner.calculate_goal_progress(goal.id)
 
     # Refresh goals after recalculation
-    goals = planner.get_active_goals()
+    if unassigned:
+        goals = planner.get_unassigned_goals()
+    else:
+        goals = planner.get_active_goals()
 
-    table = Table(title="🎯 Your Goals", show_header=True, header_style="bold cyan")
+    # Build title
+    title_parts = ["🎯 Your Goals"]
+    if unassigned:
+        title_parts.append("[Unassigned]")
+    elif global_view:
+        title_parts.append("[All Projects]")
+    elif planner.context:
+        title_parts.append(f"[Project: {planner.context['project_name']}]")
+
+    table = Table(title=" ".join(title_parts), show_header=True, header_style="bold cyan")
     table.add_column("ID", style="dim")
     table.add_column("Title")
     table.add_column("Horizon", style="cyan")
@@ -303,6 +395,34 @@ def breakdown(goal_id):
             console.print(f"  • {task.title}")
     else:
         console.print("[red]✗[/red] Failed to break down goal")
+    planner.close()
+
+@goal.command()
+@click.argument('goal_id', type=int)
+@click.option('--project', '-p', required=True, help='Project name to assign')
+@click.option('--path', help='Repository path (auto-detected from project list if omitted)')
+def assign(goal_id, project, path):
+    """Assign a goal to a project"""
+    planner = BusinessPlanner(project_filter=False)
+
+    # If path not provided, try to find it from existing tasks/goals with this project
+    if not path:
+        from agent.models import Task, Goal
+        existing = planner.session.query(Task).filter(Task.project_name == project).first()
+        if existing and existing.repository_path:
+            path = existing.repository_path
+        else:
+            existing_goal = planner.session.query(Goal).filter(Goal.project_name == project).first()
+            if existing_goal and existing_goal.repository_path:
+                path = existing_goal.repository_path
+
+    goal = planner.assign_goal_to_project(goal_id, project, path)
+    if goal:
+        console.print(f"[green]✓[/green] Assigned goal '{goal.title}' to project: {project}")
+        if path:
+            console.print(f"[dim]  Path: {path}[/dim]")
+    else:
+        console.print(f"[red]✗[/red] Goal {goal_id} not found")
     planner.close()
 
 # RESEARCH COMMANDS
@@ -869,6 +989,221 @@ def load(file_path, name):
     sys.path.insert(0, repo_root)
     from scripts.load_business_plan import load_business_plan
     load_business_plan(file_path, name)
+
+# PROJECT COMMANDS
+@cli.group()
+def project():
+    """Manage projects and repository contexts"""
+    pass
+
+@project.command()
+def list():
+    """List all projects with task and goal counts"""
+    from agent.models import Task, Goal, get_session
+    from collections import defaultdict
+
+    session = get_session()
+
+    # Get all unique projects from tasks and goals
+    tasks = session.query(Task.project_name).distinct().all()
+    goals = session.query(Goal.project_name).distinct().all()
+
+    projects = set()
+    for (proj,) in tasks:
+        if proj:
+            projects.add(proj)
+    for (proj,) in goals:
+        if proj:
+            projects.add(proj)
+
+    if not projects:
+        console.print("[yellow]No projects found. Run 'bizy migrate' to add project tracking.[/yellow]")
+        return
+
+    # Count tasks and goals per project
+    project_stats = defaultdict(lambda: {'tasks': 0, 'goals': 0, 'completed_tasks': 0, 'active_goals': 0})
+
+    for project_name in projects:
+        task_count = session.query(Task).filter(Task.project_name == project_name).count()
+        completed_task_count = session.query(Task).filter(
+            Task.project_name == project_name,
+            Task.status == 'completed'
+        ).count()
+        goal_count = session.query(Goal).filter(Goal.project_name == project_name).count()
+        active_goal_count = session.query(Goal).filter(
+            Goal.project_name == project_name,
+            Goal.status == 'active'
+        ).count()
+
+        project_stats[project_name] = {
+            'tasks': task_count,
+            'goals': goal_count,
+            'completed_tasks': completed_task_count,
+            'active_goals': active_goal_count
+        }
+
+    # Display projects table
+    table = Table(title="📁 Projects", show_header=True, header_style="bold cyan")
+    table.add_column("Project Name", style="bold")
+    table.add_column("Tasks", justify="right")
+    table.add_column("Goals", justify="right")
+    table.add_column("Progress", justify="center")
+
+    for project_name in sorted(projects):
+        stats = project_stats[project_name]
+        completion_rate = (stats['completed_tasks'] / stats['tasks'] * 100) if stats['tasks'] > 0 else 0
+        progress_bar = "█" * int(completion_rate / 10) + "░" * (10 - int(completion_rate / 10))
+
+        table.add_row(
+            project_name,
+            f"{stats['tasks']} ({stats['completed_tasks']} done)",
+            f"{stats['goals']} ({stats['active_goals']} active)",
+            f"{progress_bar} {completion_rate:.0f}%"
+        )
+
+    console.print(table)
+
+    # Show current context
+    from agent.utils import get_repository_context
+    context = get_repository_context()
+    console.print(f"\n[dim]Current context: {context['project_name']}[/dim]")
+
+    session.close()
+
+@project.command()
+def current():
+    """Show the current project context"""
+    from agent.utils import get_repository_context
+
+    context = get_repository_context()
+    console.print(Panel.fit(
+        f"[bold cyan]Project:[/bold cyan] {context['project_name']}\n"
+        f"[bold cyan]Path:[/bold cyan] {context['repository_path'] or 'N/A (global context)'}",
+        title="📍 Current Context",
+        border_style="cyan"
+    ))
+
+@project.command('assign-all')
+@click.option('--tasks', 'assign_tasks', is_flag=True, help='Assign tasks')
+@click.option('--goals', 'assign_goals', is_flag=True, help='Assign goals')
+@click.option('--category', '-c', help='Filter by category (tasks only)')
+@click.option('--category-like', help='Filter by category pattern (SQL LIKE, e.g., "phase-3%")')
+@click.option('--horizon', '-h', type=click.Choice(['yearly', 'quarterly', 'monthly']), help='Filter by goal horizon')
+@click.option('--status', '-s', type=click.Choice(['pending', 'completed', 'all']), default='all', help='Filter by status')
+@click.option('--ids', help='Comma-separated IDs to assign')
+@click.option('--dry-run', is_flag=True, help='Preview without making changes')
+@click.option('--project', '-p', help='Target project (default: current repo)')
+def assign_all(assign_tasks, assign_goals, category, category_like, horizon, status, ids, dry_run, project):
+    """Assign unassigned tasks/goals to a project with filters"""
+    from agent.utils import get_repository_context
+    from agent.models import Task, Goal
+
+    # Default to both if neither specified
+    if not assign_tasks and not assign_goals:
+        assign_tasks = True
+        assign_goals = True
+
+    # Get target project
+    if project:
+        target_project = project
+        # Try to find path from existing items
+        task_mgr = TaskManager(project_filter=False)
+        existing = task_mgr.session.query(Task).filter(Task.project_name == project).first()
+        if existing and existing.repository_path:
+            target_path = existing.repository_path
+        else:
+            existing_goal = task_mgr.session.query(Goal).filter(Goal.project_name == project).first()
+            target_path = existing_goal.repository_path if existing_goal else None
+        task_mgr.close()
+    else:
+        context = get_repository_context()
+        target_project = context['project_name']
+        target_path = context['repository_path']
+
+    task_mgr = TaskManager(project_filter=False)
+    planner = BusinessPlanner(project_filter=False)
+
+    assigned_count = 0
+
+    # Handle tasks
+    if assign_tasks:
+        if ids:
+            task_ids = [int(x.strip()) for x in ids.split(',')]
+            tasks_to_assign = [task_mgr.get_task(tid) for tid in task_ids if task_mgr.get_task(tid)]
+            tasks_to_assign = [t for t in tasks_to_assign if t.project_name is None]
+        else:
+            tasks_to_assign = task_mgr.get_unassigned_tasks(
+                category=category,
+                category_like=category_like,
+                status=status if status != 'all' else None
+            )
+
+        if tasks_to_assign:
+            console.print(f"\n[bold cyan]Tasks to assign ({len(tasks_to_assign)}):[/bold cyan]")
+            for task in tasks_to_assign:
+                console.print(f"  • [{task.id}] {task.title[:50]} [dim]({task.category or 'no category'})[/dim]")
+
+            if not dry_run:
+                for task in tasks_to_assign:
+                    task_mgr.assign_to_project(task.id, target_project, target_path)
+                    assigned_count += 1
+        else:
+            console.print("\n[yellow]No unassigned tasks match the filters[/yellow]")
+
+    # Handle goals
+    if assign_goals:
+        if ids and not assign_tasks:  # Only use IDs for goals if tasks flag not set
+            goal_ids = [int(x.strip()) for x in ids.split(',')]
+            goals_to_assign = [planner.get_goal(gid) for gid in goal_ids if planner.get_goal(gid)]
+            goals_to_assign = [g for g in goals_to_assign if g.project_name is None]
+        else:
+            goals_to_assign = planner.get_unassigned_goals(
+                horizon=horizon,
+                status=status if status != 'all' else None
+            )
+
+        if goals_to_assign:
+            console.print(f"\n[bold cyan]Goals to assign ({len(goals_to_assign)}):[/bold cyan]")
+            for goal in goals_to_assign:
+                console.print(f"  • [{goal.id}] {goal.title[:50]} [dim]({goal.horizon})[/dim]")
+
+            if not dry_run:
+                for goal in goals_to_assign:
+                    planner.assign_goal_to_project(goal.id, target_project, target_path)
+                    assigned_count += 1
+        else:
+            console.print("\n[yellow]No unassigned goals match the filters[/yellow]")
+
+    # Summary
+    if dry_run:
+        console.print(f"\n[yellow]Dry run - no changes made[/yellow]")
+        console.print(f"[dim]Would assign to project: {target_project}[/dim]")
+    else:
+        console.print(f"\n[green]✓[/green] Assigned {assigned_count} items to project: {target_project}")
+        if target_path:
+            console.print(f"[dim]  Path: {target_path}[/dim]")
+
+    task_mgr.close()
+    planner.close()
+
+# MIGRATION COMMAND
+@cli.command()
+def migrate():
+    """Run database migration to add project tracking columns"""
+    from agent.models import migrate_add_project_columns
+
+    console.print("\n[bold cyan]Running Database Migration[/bold cyan]")
+    console.print("This will add project tracking to your tasks and goals.\n")
+
+    try:
+        migrate_add_project_columns()
+        console.print("\n[bold green]✓ Migration completed successfully![/bold green]")
+        console.print("\n[dim]Future tasks and goals will automatically be tagged with your current repository.[/dim]")
+        console.print("[dim]Use --global flag to see tasks across all projects.[/dim]\n")
+    except Exception as e:
+        console.print(f"\n[bold red]✗ Migration failed:[/bold red] {e}\n")
+        import traceback
+        console.print(f"[dim]{traceback.format_exc()}[/dim]")
 
 if __name__ == "__main__":
     cli()

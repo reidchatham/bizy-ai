@@ -1,15 +1,42 @@
 from datetime import datetime, timedelta, date
 from sqlalchemy import and_, or_
 from agent.models import Task, DailyLog, get_session
+from agent.utils import get_repository_context
 
 class TaskManager:
-    def __init__(self):
+    def __init__(self, project_filter=True):
+        """
+        Initialize TaskManager.
+
+        Args:
+            project_filter: If True, filter tasks by current repository context.
+                           If False (--global mode), show all tasks.
+        """
         self.session = get_session()
-    
-    def create_task(self, title, description=None, priority=3, category=None, 
-                    estimated_hours=None, due_date=None, parent_goal_id=None, 
-                    dependencies=None, tags=None):
-        """Create a new task"""
+        self.project_filter = project_filter
+        self.context = get_repository_context() if project_filter else None
+
+    def _apply_project_filter(self, query):
+        """Apply project filtering to a query if project_filter is enabled."""
+        if self.project_filter and self.context:
+            project_name = self.context['project_name']
+            # Filter by project_name, or include tasks with NULL project_name (legacy tasks)
+            query = query.filter(or_(
+                Task.project_name == project_name,
+                Task.project_name == None
+            ))
+        return query
+
+    def create_task(self, title, description=None, priority=3, category=None,
+                    estimated_hours=None, due_date=None, parent_goal_id=None,
+                    dependencies=None, tags=None, project_name=None, repository_path=None):
+        """Create a new task with automatic project context detection"""
+        # Auto-detect project context if not explicitly provided
+        if project_name is None or repository_path is None:
+            context = get_repository_context()
+            project_name = project_name or context['project_name']
+            repository_path = repository_path or context['repository_path']
+
         task = Task(
             title=title,
             description=description,
@@ -19,7 +46,9 @@ class TaskManager:
             due_date=due_date,
             parent_goal_id=parent_goal_id,
             dependencies=dependencies or [],
-            tags=tags or []
+            tags=tags or [],
+            project_name=project_name,
+            repository_path=repository_path
         )
         self.session.add(task)
         self.session.commit()
@@ -33,8 +62,8 @@ class TaskManager:
         """Get all tasks due today or overdue"""
         today = datetime.now().date()
         tomorrow = today + timedelta(days=1)
-        
-        tasks = self.session.query(Task).filter(
+
+        query = self.session.query(Task).filter(
             and_(
                 Task.status.in_(['pending', 'in_progress']),
                 or_(
@@ -42,31 +71,39 @@ class TaskManager:
                     Task.due_date < datetime.combine(tomorrow, datetime.min.time())
                 )
             )
-        ).order_by(Task.priority, Task.due_date).all()
-        
-        return tasks
+        )
+        query = self._apply_project_filter(query)
+        return query.order_by(Task.priority, Task.due_date).all()
     
     def get_tasks_by_status(self, status):
         """Get all tasks with a specific status"""
-        return self.session.query(Task).filter(Task.status == status).all()
+        query = self.session.query(Task).filter(Task.status == status)
+        query = self._apply_project_filter(query)
+        return query.all()
     
     def get_tasks_by_goal(self, goal_id):
         """Get all tasks linked to a specific goal"""
-        return self.session.query(Task).filter(Task.parent_goal_id == goal_id).all()
+        query = self.session.query(Task).filter(Task.parent_goal_id == goal_id)
+        query = self._apply_project_filter(query)
+        return query.all()
     
     def get_tasks_by_category(self, category):
         """Get all tasks in a specific category"""
-        return self.session.query(Task).filter(Task.category == category).all()
+        query = self.session.query(Task).filter(Task.category == category)
+        query = self._apply_project_filter(query)
+        return query.all()
     
     def get_overdue_tasks(self):
         """Get all overdue tasks"""
         now = datetime.now()
-        return self.session.query(Task).filter(
+        query = self.session.query(Task).filter(
             and_(
                 Task.status.in_(['pending', 'in_progress']),
                 Task.due_date < now
             )
-        ).order_by(Task.priority).all()
+        )
+        query = self._apply_project_filter(query)
+        return query.order_by(Task.priority).all()
     
     def update_task(self, task_id, **kwargs):
         """Update task fields"""
@@ -107,7 +144,27 @@ class TaskManager:
             self.session.commit()
             return True
         return False
-    
+
+    def assign_to_project(self, task_id, project_name, repository_path=None):
+        """Assign a task to a specific project"""
+        task = self.get_task(task_id)
+        if task:
+            task.project_name = project_name
+            task.repository_path = repository_path
+            self.session.commit()
+        return task
+
+    def get_unassigned_tasks(self, category=None, category_like=None, status=None):
+        """Get tasks without project assignment, with optional filters"""
+        query = self.session.query(Task).filter(Task.project_name == None)
+        if category:
+            query = query.filter(Task.category == category)
+        if category_like:
+            query = query.filter(Task.category.like(category_like))
+        if status and status != 'all':
+            query = query.filter(Task.status == status)
+        return query.all()
+
     def get_tasks_for_date_range(self, start_date, end_date):
         """Get all tasks within a date range"""
         return self.session.query(Task).filter(

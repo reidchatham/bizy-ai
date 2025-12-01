@@ -5,6 +5,59 @@ All notable changes to Bizy AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-11-25
+
+### Added
+- **Comprehensive Backend API Tests** - 90 tests achieving 80%+ coverage
+  - `test_tasks_api.py` - 41 tests covering CRUD, filtering, completion, stats, authorization
+  - `test_analytics_api.py` - 19 tests covering task analytics, goal analytics, velocity, trends
+  - `test_goals_api.py` - 30 tests covering CRUD, progress, hierarchy, authorization
+- **CI/CD Pipeline** - GitHub Actions for automated testing and deployment
+  - `.github/workflows/ci.yml` - Continuous integration with linting, type checking, tests
+  - `.github/workflows/deploy.yml` - Continuous deployment to DigitalOcean App Platform
+- **Project CLAUDE.md** - AI session protocol documentation for consistent development
+- **Test Fixtures** - Extended `conftest.py` with sample_task, sample_goal, mock_anthropic_client
+
+### Changed
+- **app.yaml** - Disabled `deploy_on_push` for all services (now controlled by GitHub Actions)
+- **Test Auth Pattern** - Switched from monkeypatch to FastAPI dependency_overrides for auth mocking
+
+### Developer Experience
+- Established TDD workflow with session protocol
+- Added comprehensive test coverage for backend API
+- Automated CI checks: black, isort, flake8, mypy, pytest, ESLint, tsc
+- Docker build validation in CI pipeline
+
+## [1.2.0] - 2025-11-24
+
+### Added
+- **Per-Repository Isolation** - Tasks and goals are now automatically scoped to your current Git repository
+  - Auto-detection of Git repository context using `git rev-parse --show-toplevel`
+  - Added `project_name` and `repository_path` fields to Task and Goal models
+  - Tasks created in different repositories are kept separate and organized
+  - Backward compatible: legacy tasks (without project tags) appear in all project views
+- **Global View** - New `--global` flag to view tasks/goals across all projects
+  - Works with `bizy task list --global`, `bizy goal list --global`, etc.
+- **Project Commands** - New `bizy project` command group
+  - `bizy project current` - Show current repository context
+  - `bizy project list` - List all projects with task/goal counts and progress
+- **Project Filtering** - New `--project=<name>` flag to view specific project
+  - Example: `bizy task list --project=business-agent`
+- **Database Migration** - New `bizy migrate` command to upgrade existing databases
+  - Safely adds project tracking columns to tasks and goals tables
+  - Safe to run multiple times (checks if columns already exist)
+
+### Changed
+- TaskManager and BusinessPlanner now accept `project_filter` parameter (default: True)
+- All query methods in TaskManager apply project filtering when enabled
+- All query methods in BusinessPlanner apply project filtering when enabled
+- Task/goal creation automatically detects and saves current repository context
+
+### Developer Experience
+- Created `agent/utils.py` with `get_repository_context()` helper function
+- Added comprehensive documentation in README.md for per-repository isolation
+- Updated all CLI commands to show current project in output titles
+
 ## [1.1.1] - 2025-10-11
 
 ### Fixed
@@ -68,6 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SQLite database
 - Automated scheduling
 
+[1.3.0]: https://github.com/reidchatham/bizy-ai/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/reidchatham/bizy-ai/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/reidchatham/bizy-ai/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/reidchatham/bizy-ai/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/reidchatham/bizy-ai/releases/tag/v1.0.2

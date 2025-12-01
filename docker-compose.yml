@@ -46,6 +46,7 @@ services:
       RACK_ENV: ${RACK_ENV:-development}
       JWT_SECRET: ${JWT_SECRET}
       DATABASE_URL: sqlite3:/app/db/development.sqlite3
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USERNAME: ${SMTP_USERNAME:-}

@@ -109,6 +109,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 
 ### ⚡ Phase 2 - Enhanced Analytics (In Progress)
 
+✅ **Per-Repository Isolation** - Tasks and goals automatically scoped to current Git repository
 ✅ **Live Dashboard** - Real-time terminal UI with task/goal/stats views (`bizy dashboard`)
 ✅ **iCal Export** - Export tasks to .ics files for calendar import (`bizy calendar export`)
 ✅ **Velocity Predictions** - AI predicts goal completion dates based on historical velocity (`bizy predict goal <id>`)
@@ -230,11 +231,17 @@ bizy review
 
 ### Task Management
 ```bash
-# Add task
+# Add task (automatically tagged with current repository)
 bizy task add "Task title" -p 1 -h 3 -c category
 
-# List tasks
+# List tasks (filtered by current repository)
 bizy task list
+
+# List tasks from all projects
+bizy task list --global
+
+# List tasks from specific project
+bizy task list --project=<project-name>
 
 # Complete task
 bizy task complete <ID>
@@ -242,14 +249,29 @@ bizy task complete <ID>
 
 ### Goal Management
 ```bash
-# Add goal
+# Add goal (automatically tagged with current repository)
 bizy goal add "Goal title" -h quarterly -t 2025-12-31
 
-# List goals
+# List goals (filtered by current repository)
 bizy goal list
+
+# List goals from all projects
+bizy goal list --global
 
 # AI breakdown (creates tasks automatically)
 bizy goal breakdown <ID>
+```
+
+### Project Management
+```bash
+# Show current project context
+bizy project current
+
+# List all projects with task/goal counts
+bizy project list
+
+# Run migration (adds project tracking to existing data)
+bizy migrate
 ```
 
 ### Analytics & Predictions
@@ -458,6 +480,59 @@ python scripts/morning_brief.py
 7. Weekly review provides strategic insights
    ↓
 8. Cycle repeats, continuously improving
+```
+
+---
+
+## Per-Repository Isolation
+
+Bizy AI automatically detects which Git repository you're working in and scopes tasks/goals accordingly. This allows you to manage multiple projects without mixing their tasks together.
+
+### How It Works
+
+```bash
+# In /Users/you/projects/business-agent/
+bizy task list
+# → Shows tasks tagged with "business-agent" project
+
+# In /Users/you/projects/my-app/
+bizy task list
+# → Shows tasks tagged with "my-app" project
+
+# From anywhere
+bizy task list --global
+# → Shows tasks from ALL projects
+```
+
+### Key Features
+
+- **Automatic Detection** - Tasks/goals are automatically tagged with your current Git repository name
+- **Per-Project Views** - Default commands filter by current project context
+- **Global View** - Use `--global` flag to see tasks across all projects
+- **Project Switching** - Use `--project=<name>` to view a specific project
+- **Backward Compatible** - Legacy tasks (without project tags) appear in all project views
+
+### Migration
+
+If you have existing tasks/goals, run the migration to add project tracking:
+
+```bash
+bizy migrate
+```
+
+This safely adds project columns to your database. Existing tasks remain accessible from all projects.
+
+### Project Commands
+
+```bash
+# View current repository context
+bizy project current
+
+# List all projects with stats
+bizy project list
+
+# View specific project's tasks
+bizy task list --project=business-agent
 ```
 
 ---

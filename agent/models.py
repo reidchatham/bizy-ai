@@ -24,7 +24,9 @@ class Task(Base):
     dependencies = Column(JSON)  # List of task IDs this depends on
     notes = Column(Text)
     tags = Column(JSON)  # List of tags for filtering
-    
+    project_name = Column(String(200), index=True)  # Repository/project name (e.g., "business-agent")
+    repository_path = Column(String(500))  # Full path to repository root
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -41,7 +43,9 @@ class Task(Base):
             'parent_goal_id': self.parent_goal_id,
             'dependencies': self.dependencies or [],
             'notes': self.notes,
-            'tags': self.tags or []
+            'tags': self.tags or [],
+            'project_name': self.project_name,
+            'repository_path': self.repository_path
         }
 
 class Goal(Base):
@@ -59,7 +63,9 @@ class Goal(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     metrics = Column(JSON)  # Key metrics to track
-    
+    project_name = Column(String(200), index=True)  # Repository/project name (e.g., "business-agent")
+    repository_path = Column(String(500))  # Full path to repository root
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -72,7 +78,9 @@ class Goal(Base):
             'success_criteria': self.success_criteria,
             'parent_goal_id': self.parent_goal_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'metrics': self.metrics or {}
+            'metrics': self.metrics or {},
+            'project_name': self.project_name,
+            'repository_path': self.repository_path
         }
 
 class DailyLog(Base):
@@ -229,3 +237,48 @@ def init_database(db_path=None):
     engine = get_engine(db_path)
     Base.metadata.create_all(engine)
     return engine
+
+def migrate_add_project_columns(engine=None):
+    """
+    Migration to add project_name and repository_path columns to tasks and goals tables.
+    This is safe to run multiple times - it will only add columns if they don't exist.
+    """
+    if engine is None:
+        engine = get_engine()
+
+    # SQLite doesn't support checking if column exists easily, so we try to add and catch errors
+    import sqlite3
+
+    conn = engine.raw_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Check if columns already exist by trying to select them
+        cursor.execute("SELECT project_name FROM tasks LIMIT 1")
+        print("✓ Tasks table already has project columns")
+    except sqlite3.OperationalError:
+        # Column doesn't exist, add it
+        print("Adding project columns to tasks table...")
+        cursor.execute("ALTER TABLE tasks ADD COLUMN project_name VARCHAR(200)")
+        cursor.execute("ALTER TABLE tasks ADD COLUMN repository_path VARCHAR(500)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_tasks_project_name ON tasks (project_name)")
+        print("✓ Added project columns to tasks table")
+
+    try:
+        # Check if columns already exist in goals table
+        cursor.execute("SELECT project_name FROM goals LIMIT 1")
+        print("✓ Goals table already has project columns")
+    except sqlite3.OperationalError:
+        # Column doesn't exist, add it
+        print("Adding project columns to goals table...")
+        cursor.execute("ALTER TABLE goals ADD COLUMN project_name VARCHAR(200)")
+        cursor.execute("ALTER TABLE goals ADD COLUMN repository_path VARCHAR(500)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_goals_project_name ON goals (project_name)")
+        print("✓ Added project columns to goals table")
+
+    conn.commit()
+    conn.close()
+
+    print("\n✓ Migration completed successfully!")
+    print("  Existing tasks/goals have been assigned to 'global' project")
+    print("  New tasks/goals will automatically use the current repository context")

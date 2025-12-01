@@ -1,17 +1,38 @@
 from datetime import datetime, timedelta
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from agent.models import Goal, BusinessPlan, Task, get_session
 from agent.tasks import TaskManager
+from agent.utils import get_repository_context
 import anthropic
 import os
 import json
 
 class BusinessPlanner:
-    def __init__(self):
+    def __init__(self, project_filter=True):
+        """
+        Initialize BusinessPlanner.
+
+        Args:
+            project_filter: If True, filter goals by current repository context.
+                           If False (--global mode), show all goals.
+        """
         self.session = get_session()
-        self.task_mgr = TaskManager()
+        self.project_filter = project_filter
+        self.context = get_repository_context() if project_filter else None
+        self.task_mgr = TaskManager(project_filter=project_filter)
         self.client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
         self.model = "claude-sonnet-4-20250514"
+
+    def _apply_project_filter(self, query):
+        """Apply project filtering to a query if project_filter is enabled."""
+        if self.project_filter and self.context:
+            project_name = self.context['project_name']
+            # Filter by project_name, or include goals with NULL project_name (legacy goals)
+            query = query.filter(or_(
+                Goal.project_name == project_name,
+                Goal.project_name == None
+            ))
+        return query
     
     # === Business Plan Management ===
     
@@ -52,9 +73,16 @@ class BusinessPlanner:
     
     # === Goal Management ===
     
-    def create_goal(self, title, description, horizon, target_date=None, 
-                   success_criteria=None, parent_goal_id=None, metrics=None):
-        """Create a new goal"""
+    def create_goal(self, title, description, horizon, target_date=None,
+                   success_criteria=None, parent_goal_id=None, metrics=None,
+                   project_name=None, repository_path=None):
+        """Create a new goal with automatic project context detection"""
+        # Auto-detect project context if not explicitly provided
+        if project_name is None or repository_path is None:
+            context = get_repository_context()
+            project_name = project_name or context['project_name']
+            repository_path = repository_path or context['repository_path']
+
         goal = Goal(
             title=title,
             description=description,
@@ -62,7 +90,9 @@ class BusinessPlanner:
             target_date=target_date,
             success_criteria=success_criteria,
             parent_goal_id=parent_goal_id,
-            metrics=metrics or {}
+            metrics=metrics or {},
+            project_name=project_name,
+            repository_path=repository_path
         )
         self.session.add(goal)
         self.session.commit()
@@ -74,18 +104,22 @@ class BusinessPlanner:
     
     def get_active_goals(self):
         """Get all active goals"""
-        return self.session.query(Goal).filter(
+        query = self.session.query(Goal).filter(
             Goal.status == 'active'
-        ).order_by(Goal.horizon, Goal.target_date).all()
+        )
+        query = self._apply_project_filter(query)
+        return query.order_by(Goal.horizon, Goal.target_date).all()
     
     def get_goals_by_horizon(self, horizon):
         """Get goals for a specific time horizon"""
-        return self.session.query(Goal).filter(
+        query = self.session.query(Goal).filter(
             and_(
                 Goal.horizon == horizon,
                 Goal.status == 'active'
             )
-        ).order_by(Goal.target_date).all()
+        )
+        query = self._apply_project_filter(query)
+        return query.order_by(Goal.target_date).all()
     
     def update_goal_progress(self, goal_id, progress_percentage):
         """Update goal progress"""
@@ -106,14 +140,32 @@ class BusinessPlanner:
         tasks = self.task_mgr.get_tasks_by_goal(goal_id)
         if not tasks:
             return 0
-        
+
         completed = len([t for t in tasks if t.status == 'completed'])
         progress = (completed / len(tasks)) * 100
-        
+
         # Update the goal
         self.update_goal_progress(goal_id, progress)
         return progress
-    
+
+    def assign_goal_to_project(self, goal_id, project_name, repository_path=None):
+        """Assign a goal to a specific project"""
+        goal = self.session.query(Goal).filter_by(id=goal_id).first()
+        if goal:
+            goal.project_name = project_name
+            goal.repository_path = repository_path
+            self.session.commit()
+        return goal
+
+    def get_unassigned_goals(self, horizon=None, status=None):
+        """Get goals without project assignment, with optional filters"""
+        query = self.session.query(Goal).filter(Goal.project_name == None)
+        if horizon:
+            query = query.filter(Goal.horizon == horizon)
+        if status and status != 'all':
+            query = query.filter(Goal.status == status)
+        return query.all()
+
     # === Goal Breakdown (AI-Powered) ===
     
     def break_down_goal(self, goal_id):

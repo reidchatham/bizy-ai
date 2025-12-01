@@ -8,7 +8,7 @@ services:
     github:
       repo: reidchatham/business-agent
       branch: main
-      deploy_on_push: true
+      deploy_on_push: false  # Controlled by GitHub Actions CI/CD
     source_dir: frontend
     build_command: npm run build
     output_dir: dist
@@ -24,7 +24,7 @@ services:
     github:
       repo: reidchatham/business-agent
       branch: main
-      deploy_on_push: true
+      deploy_on_push: false  # Controlled by GitHub Actions CI/CD
     dockerfile_path: backend/Dockerfile
     source_dir: backend
     envs:
@@ -95,7 +95,7 @@ services:
     github:
       repo: reidchatham/auth-server-ruby
       branch: main
-      deploy_on_push: true
+      deploy_on_push: false  # Controlled by GitHub Actions CI/CD
     dockerfile_path: Dockerfile
     envs:
       # Environment
