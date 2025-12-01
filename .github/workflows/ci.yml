@@ -72,9 +72,9 @@ jobs:
         working-directory: ./backend
     env:
       BIZY_ENV: test
-      DATABASE_URL: sqlite:///:memory:
-      JWT_SECRET: test-secret-for-ci-minimum-32-characters-long
-      ANTHROPIC_API_KEY: test-key
+      DATABASE_URL: "sqlite:///:memory:"
+      JWT_SECRET: "test-secret-for-ci-minimum-32-characters-long"
+      ANTHROPIC_API_KEY: "test-key"
     steps:
       - uses: actions/checkout@v4
 
@@ -193,7 +193,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_BASE_URL: https://api.bizy.ai
+          VITE_API_BASE_URL: "https://api.bizy.ai"
 
   # Docker Build Validation
   docker-build:
