@@ -23,7 +23,7 @@ import {
   Spinner,
 } from '../components/ui';
 import api from '../services/api';
-import { MorningBriefing, Task, Goal } from '../types';
+import type { MorningBriefing, Task, Goal } from '../types';
 
 export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -78,7 +78,7 @@ export default function Dashboard() {
   const completedGoals = goals?.filter((goal) => goal.status === 'completed').length || 0;
 
   const averageGoalProgress = activeGoals.length > 0
-    ? activeGoals.reduce((sum, goal) => sum + (goal.progress || 0), 0) / activeGoals.length
+    ? activeGoals.reduce((sum, goal) => sum + (goal.progress_percentage || 0), 0) / activeGoals.length
     : 0;
 
   return (
@@ -177,30 +177,44 @@ export default function Dashboard() {
                   Yesterday's Wins
                 </h3>
                 <p className="text-sm text-[hsl(var(--muted-foreground))] pl-6">
-                  {briefing.yesterday_recap}
+                  Completed {briefing.yesterday_recap.tasks_completed} of {briefing.yesterday_recap.tasks_due} tasks
+                  ({briefing.yesterday_recap.completion_rate.toFixed(0)}% completion rate)
                 </p>
               </div>
             )}
 
             {/* Today's Mission */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Target className="h-4 w-4 text-blue-500" />
-                Today's Mission
-              </h3>
-              <p className="text-sm pl-6">{briefing.todays_mission}</p>
-            </div>
+            {briefing.todays_mission && briefing.todays_mission.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Target className="h-4 w-4 text-blue-500" />
+                  Today's Mission
+                </h3>
+                <div className="space-y-3 pl-6">
+                  {briefing.todays_mission.map((item, index) => (
+                    <div key={index} className="space-y-1">
+                      <p className="text-sm font-medium">{item.task}</p>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                        {item.why_it_matters} • Est: {item.estimated_time}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Watch Out For */}
-            {briefing.watch_out_for && (
+            {briefing.watch_out_for && briefing.watch_out_for.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-orange-500" />
                   Watch Out For
                 </h3>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] pl-6">
-                  {briefing.watch_out_for}
-                </p>
+                <ul className="space-y-1 pl-6 text-sm text-[hsl(var(--muted-foreground))]">
+                  {briefing.watch_out_for.map((item, index) => (
+                    <li key={index}>• {item}</li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -330,7 +344,7 @@ export default function Dashboard() {
                       {goal.horizon === 'yearly' ? 'Yearly' : goal.horizon === 'quarterly' ? 'Quarterly' : 'Monthly'}
                     </Badge>
                   </div>
-                  <Progress value={goal.progress || 0} showLabel />
+                  <Progress value={goal.progress_percentage || 0} showLabel />
                 </div>
               ))}
               {activeGoals.length > 3 && (

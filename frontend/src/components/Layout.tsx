@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Target, BarChart3, Package, User, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Target, BarChart3, Package, User, LogOut } from 'lucide-react';
 import { Button } from './ui';
 
 export default function Layout() {
