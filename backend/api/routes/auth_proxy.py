@@ -31,9 +31,9 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     """User login response"""
-    message: str
     token: str
-    user: dict
+    user_id: int
+    message: Optional[str] = None  # Optional for backwards compatibility
 
 
 class UserProfileResponse(BaseModel):
