@@ -5,6 +5,9 @@ RESTful API endpoints for goal management with user authentication.
 All endpoints require JWT authentication and filter by user_id.
 """
 
+import json
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
@@ -558,7 +561,6 @@ Respond in JSON format:
         )
 
         # Parse response
-        import json
         response_text = response.content[0].text
 
         # Extract JSON from response (handle markdown code blocks)

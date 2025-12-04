@@ -34,7 +34,7 @@ httpx==0.25.2  # Auth server communication
 aiohttp==3.9.1
 
 # AI/ML
-anthropic==0.7.0
+anthropic>=0.40.0
 
 # Email (optional for now)
 # sendgrid==6.11.0
