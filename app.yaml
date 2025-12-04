@@ -56,7 +56,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: ALLOWED_ORIGINS
-        value: ${frontend.PUBLIC_URL},https://bizy.ai
+        value: ${frontend.PUBLIC_URL},https://bizy-ai.online,https://www.bizy-ai.online
 
       # Auth server URL (internal)
       - key: AUTH_SERVER_URL
@@ -159,6 +159,13 @@ databases:
     version: "7"
     size: db-s-1vcpu-1gb
     production: true
+
+# Domain Configuration
+domains:
+  - domain: bizy-ai.online
+    type: PRIMARY
+  - domain: www.bizy-ai.online
+    type: ALIAS
 
 # Alerts
 alerts:
